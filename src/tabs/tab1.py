@@ -2,72 +2,8 @@ import os
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog,
                                QLineEdit, QCheckBox, QComboBox, QProgressBar, QLabel,
                                QMessageBox, QTextEdit)
-from PySide6.QtCore import Qt, QThread, Signal
-import traceback
-from src import utils
-import pandas as pd
-
-
-class ProcessError(Exception):
-    pass
-
-
-class Worker(QThread):
-    step_name = Signal(str)
-    progress = Signal(int)
-    error = Signal(str)
-    finished = Signal()
-
-    def __init__(self, directory, url):
-        super().__init__()
-        self.directory = directory
-        self.url = url
-
-    def run(self):
-        try:
-            self.process_step('ダウンロードの準備中')
-            res = utils.download_chats(self.url, self.directory, self.yt_dlp_hook)
-            self.process_step('csvファイルへの変換中')
-            title = res['title']
-            video_id = res['id']
-            timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
-
-            json_path = f"{self.directory}/{video_id}.live_chat.json"
-            df = utils.json_to_df(json_path)
-
-            output_path = f"{self.directory}/{video_id}.csv"
-            metadata = {
-                'title': title,
-                'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
-                'url': self.url,
-                'id': video_id
-            }
-            utils.save_dataframe_with_metadata(output_path, metadata, df)
-            os.remove(json_path)
-
-            self.process_step('Ready')
-        except Exception as e:
-            error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
-            self.error.emit(error_msg)
-
-    def yt_dlp_hook(self, d):
-        if self.isInterruptionRequested():
-            raise ProcessError('Process was interrupted by user.')
-        if d['status'] == 'downloading':
-            self.step_name.emit(f"チャットのダウンロード中: {d['_default_template']}")
-
-    def process_step(self, step_name):
-        self.step_name.emit(step_name)
-        print(f'Processing step: {step_name}')
-        if self.isInterruptionRequested():
-            raise ProcessError('Process was interrupted by user.')
-
-        if step_name == 'Downloading data':
-            if 'error' in self.url.lower():
-                raise ProcessError('Failed to download data from the provided URL.')
-        elif step_name == 'Processing data':
-            if not os.path.exists(self.directory):
-                raise ProcessError(f'Directory not found: {self.directory}')
+from PySide6.QtCore import Qt
+from src.utils import Worker
 
 
 class Tab1Widget(QWidget):
