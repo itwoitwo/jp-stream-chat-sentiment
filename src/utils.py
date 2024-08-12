@@ -48,12 +48,9 @@ def json_to_df(path):
 
 
 def save_dataframe_with_metadata(path, metadata, df):
-    try:
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(f"# attrs: {json.dumps(metadata, ensure_ascii=False)}\n")
-            df.to_csv(f, index=False, quoting=csv.QUOTE_ALL, escapechar='\\', quotechar='"', encoding='utf-8')
-        return True
-    except (IOError, json.JSONDecodeError, Exception):
-        return False
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(f"# attrs: {json.dumps(metadata, ensure_ascii=False)}\n")
+        df.to_csv(f, index=False, quoting=csv.QUOTE_ALL, escapechar='\\', quotechar='"', encoding='utf-8')
+
 
 

@@ -25,31 +25,29 @@ class Worker(QThread):
 
     def run(self):
         try:
-            # Simulate different processing steps
+            self.process_step('ダウンロードの準備中')
             res = utils.download_chats(self.url, self.directory, self.yt_dlp_hook)
-            self.process_step('csvファイルへの変換中', 10, 30)
+            self.process_step('csvファイルへの変換中')
             title = res['title']
             video_id = res['id']
-
-            metadata = {
-                'title': title,
-                'created_at': pd.Timestamp.now().isoformat(),
-                'url': self.url,
-                'id': video_id
-            }
+            timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
 
             json_path = f"{self.directory}/{video_id}.live_chat.json"
             df = utils.json_to_df(json_path)
 
             output_path = f"{self.directory}/{video_id}.csv"
-            if utils.save_dataframe_with_metadata(output_path, metadata, df):
-                os.remove(json_path)
+            metadata = {
+                'title': title,
+                'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
+                'url': self.url,
+                'id': video_id
+            }
+            utils.save_dataframe_with_metadata(output_path, metadata, df)
+            os.remove(json_path)
 
-            self.process_step('Processing data', 30, 70)
-            self.process_step('Finalizing', 70, 100)
-
+            self.process_step('Ready')
         except Exception as e:
-            error_msg = f'An error occurred during processing: {str(e)}\n\n{traceback.format_exc()}'
+            error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
             self.error.emit(error_msg)
 
     def yt_dlp_hook(self, d):
@@ -58,22 +56,18 @@ class Worker(QThread):
         if d['status'] == 'downloading':
             self.step_name.emit(f"チャットのダウンロード中: {d['_default_template']}")
 
-    def process_step(self, step_name, start_progress, end_progress):
+    def process_step(self, step_name):
         self.step_name.emit(step_name)
         print(f'Processing step: {step_name}')
-        for i in range(start_progress, end_progress + 1):
-            if self.isInterruptionRequested():
-                raise ProcessError('Process was interrupted by user.')
-            self.progress.emit(i)
-            self.msleep(50)  # Simulate work
+        if self.isInterruptionRequested():
+            raise ProcessError('Process was interrupted by user.')
 
-            # Simulate potential errors
-            if step_name == 'Downloading data' and i == 20:
-                if 'error' in self.url.lower():
-                    raise ProcessError('Failed to download data from the provided URL.')
-            elif step_name == 'Processing data' and i == 50:
-                if not os.path.exists(self.directory):
-                    raise ProcessError(f'Directory not found: {self.directory}')
+        if step_name == 'Downloading data':
+            if 'error' in self.url.lower():
+                raise ProcessError('Failed to download data from the provided URL.')
+        elif step_name == 'Processing data':
+            if not os.path.exists(self.directory):
+                raise ProcessError(f'Directory not found: {self.directory}')
 
 
 class Tab1Widget(QWidget):
