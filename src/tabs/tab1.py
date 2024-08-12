@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QMessageBox, QTextEdit)
 from PySide6.QtCore import Qt, QThread, Signal
 import traceback
+from src import utils
+import pandas as pd
 
 
 class ProcessError(Exception):
@@ -11,6 +13,7 @@ class ProcessError(Exception):
 
 
 class Worker(QThread):
+    step_name = Signal(str)
     progress = Signal(int)
     error = Signal(str)
     finished = Signal()
@@ -23,8 +26,25 @@ class Worker(QThread):
     def run(self):
         try:
             # Simulate different processing steps
-            self.process_step('Initializing', 0, 10)
-            self.process_step('Downloading data', 10, 30)
+            res = utils.download_chats(self.url, self.directory, self.yt_dlp_hook)
+            self.process_step('csvファイルへの変換中', 10, 30)
+            title = res['title']
+            video_id = res['id']
+
+            metadata = {
+                'title': title,
+                'created_at': pd.Timestamp.now().isoformat(),
+                'url': self.url,
+                'id': video_id
+            }
+
+            json_path = f"{self.directory}/{video_id}.live_chat.json"
+            df = utils.json_to_df(json_path)
+
+            output_path = f"{self.directory}/{video_id}.csv"
+            if utils.save_dataframe_with_metadata(output_path, metadata, df):
+                os.remove(json_path)
+
             self.process_step('Processing data', 30, 70)
             self.process_step('Finalizing', 70, 100)
 
@@ -32,7 +52,14 @@ class Worker(QThread):
             error_msg = f'An error occurred during processing: {str(e)}\n\n{traceback.format_exc()}'
             self.error.emit(error_msg)
 
+    def yt_dlp_hook(self, d):
+        if self.isInterruptionRequested():
+            raise ProcessError('Process was interrupted by user.')
+        if d['status'] == 'downloading':
+            self.step_name.emit(f"チャットのダウンロード中: {d['_default_template']}")
+
     def process_step(self, step_name, start_progress, end_progress):
+        self.step_name.emit(step_name)
         print(f'Processing step: {step_name}')
         for i in range(start_progress, end_progress + 1):
             if self.isInterruptionRequested():
@@ -91,6 +118,10 @@ class Tab1Widget(QWidget):
         self.start_cancel_button.clicked.connect(self.toggle_process)
         layout.addWidget(self.start_cancel_button)
 
+        # Step name label
+        self.step_label = QLabel('Ready')
+        layout.addWidget(self.step_label)
+
         # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setMinimumHeight(30)
@@ -134,6 +165,7 @@ class Tab1Widget(QWidget):
         self.error_display.setVisible(False)
 
         self.worker = Worker(self.dir_input.text(), self.url_input.text())
+        self.worker.step_name.connect(self.update_step_name)
         self.worker.progress.connect(self.update_progress)
         self.worker.error.connect(self.display_error)
         self.worker.finished.connect(self.process_finished)
@@ -145,6 +177,9 @@ class Tab1Widget(QWidget):
             self.start_cancel_button.setText('Cancelling...')
             self.start_cancel_button.setEnabled(False)
             self.process_finished()
+
+    def update_step_name(self, step_name):
+        self.step_label.setText(step_name)
 
     def update_progress(self, value):
         self.progress_bar.setValue(value)
