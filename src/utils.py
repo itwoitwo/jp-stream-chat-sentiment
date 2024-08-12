@@ -4,8 +4,10 @@ import json
 import pandas as pd
 import csv
 import os
+import io
 import traceback
 from PySide6.QtCore import QThread, Signal
+from urllib.parse import urlparse, parse_qs
 
 
 def download_chats(url, path, hook):
@@ -73,26 +75,30 @@ class Worker(QThread):
 
     def run(self):
         try:
-            self.process_step('ダウンロードの準備中')
-            res = download_chats(self.url, self.directory, self.yt_dlp_hook)
-            self.process_step('csvファイルへの変換中')
-            title = res['title']
-            video_id = res['id']
-            timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
+            parsed_url = urlparse(self.url)
+            query_params = parse_qs(parsed_url.query)
+            output_path = f"{self.directory}/{query_params['v'][0]}.csv"
+            if not os.path.exists(output_path):
+                self.process_step('ダウンロードの準備中')
+                res = download_chats(self.url, self.directory, self.yt_dlp_hook)
+                self.process_step('csvファイルへの変換中')
+                title = res['title']
+                video_id = res['id']
+                timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
 
-            json_path = f"{self.directory}/{video_id}.live_chat.json"
-            df = json_to_df(json_path)
+                json_path = f"{self.directory}/{video_id}.live_chat.json"
+                df = json_to_df(json_path)
 
-            output_path = f"{self.directory}/{video_id}.csv"
-            metadata = {
-                'title': title,
-                'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
-                'url': self.url,
-                'id': video_id
-            }
-            save_dataframe_with_metadata(output_path, metadata, df)
-            os.remove(json_path)
-
+                metadata = {
+                    'title': title,
+                    'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
+                    'url': self.url,
+                    'id': video_id
+                }
+                save_dataframe_with_metadata(output_path, metadata, df)
+                os.remove(json_path)
+            else:
+                df, _ = read_csv_with_metadata(output_path)
             self.process_step('Ready')
         except Exception as e:
             error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
@@ -116,3 +122,16 @@ class Worker(QThread):
         elif step_name == 'Processing data':
             if not os.path.exists(self.directory):
                 raise ProcessError(f'Directory not found: {self.directory}')
+
+
+def read_csv_with_metadata(file_path):
+    metadata = {}
+    with open(file_path, 'r', encoding='utf-8') as file:
+        first_line = file.readline().strip()
+        if first_line.startswith('# attrs:'):
+            metadata = json.loads(first_line[8:])
+        csv_data = file.readlines()
+
+    df = pd.read_csv(io.StringIO(''.join(csv_data)), quotechar='"')
+
+    return df, metadata
