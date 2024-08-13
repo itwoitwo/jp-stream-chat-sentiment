@@ -8,7 +8,8 @@ import io
 import traceback
 from PySide6.QtCore import QThread, Signal
 from urllib.parse import urlparse, parse_qs
-from constants import ErrorCode, ERROR_MESSAGE
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from constants import ErrorCode, ERROR_MESSAGE, EMOTION_NAMES, CHECKPOINT
 
 
 def download_chats(url, path, hook):
@@ -78,7 +79,8 @@ class Worker(QThread):
         super().__init__()
         self.directory = directory
         self.url = url
-        self.nlp_components = nlp_components
+        self.tokenizer = nlp_components['tokenizer']
+        self.model = nlp_components['model']
 
     def run(self):
         try:
@@ -152,7 +154,13 @@ class ModelLoader(QThread):
     finished = Signal(object)
 
     def run(self):
-        # ここでモデルをロード
-        tokenizer = 'loaded_tokenizer'
-        model = 'loaded_model'
+        num_labels = len(EMOTION_NAMES)
+        label2id = {label: i for i, label in enumerate(EMOTION_NAMES)}
+        id2label = {i: label for i, label in enumerate(EMOTION_NAMES)}
+
+        model = AutoModelForSequenceClassification.from_pretrained(CHECKPOINT['MODEL'], num_labels=num_labels)
+        model.config.id2label = id2label
+        model.config.label2id = label2id
+
+        tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT['TOKENIZER'], clean_up_tokenization_spaces=True)
         self.finished.emit({'tokenizer': tokenizer, 'model': model})
