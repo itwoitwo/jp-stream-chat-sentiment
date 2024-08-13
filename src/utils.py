@@ -8,6 +8,7 @@ import io
 import traceback
 from PySide6.QtCore import QThread, Signal
 from urllib.parse import urlparse, parse_qs
+from constants import ErrorCode, ERROR_MESSAGE
 
 
 def download_chats(url, path, hook):
@@ -59,7 +60,12 @@ def save_dataframe_with_metadata(path, metadata, df):
 
 
 class ProcessError(Exception):
-    pass
+    def __init__(self, message='', code=ErrorCode['UNKNOWN']):
+        self.message = message
+        self.code = code
+
+    def __str__(self):
+        return self.message
 
 
 class Worker(QThread):
@@ -68,10 +74,11 @@ class Worker(QThread):
     error = Signal(str)
     finished = Signal()
 
-    def __init__(self, directory, url):
+    def __init__(self, directory, url, nlp_components):
         super().__init__()
         self.directory = directory
         self.url = url
+        self.nlp_components = nlp_components
 
     def run(self):
         try:
@@ -100,13 +107,17 @@ class Worker(QThread):
             else:
                 df, _ = read_csv_with_metadata(output_path)
             self.process_step('Ready')
+            self.progress.emit(100)
         except Exception as e:
+            if isinstance(e, ProcessError):
+                if e.code == ErrorCode['CANCEL']:
+                    return
             error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
             self.error.emit(error_msg)
 
     def yt_dlp_hook(self, d):
         if self.isInterruptionRequested():
-            raise ProcessError('Process was interrupted by user.')
+            raise ProcessError(ERROR_MESSAGE['CANCEL'], ErrorCode['CANCEL'])
         if d['status'] == 'downloading':
             self.step_name.emit(f"チャットのダウンロード中: {d['_default_template']}")
 
@@ -114,7 +125,7 @@ class Worker(QThread):
         self.step_name.emit(step_name)
         print(f'Processing step: {step_name}')
         if self.isInterruptionRequested():
-            raise ProcessError('Process was interrupted by user.')
+            raise ProcessError(ERROR_MESSAGE['CANCEL'], ErrorCode['CANCEL'])
 
         if step_name == 'Downloading data':
             if 'error' in self.url.lower():
@@ -135,3 +146,13 @@ def read_csv_with_metadata(file_path):
     df = pd.read_csv(io.StringIO(''.join(csv_data)), quotechar='"')
 
     return df, metadata
+
+
+class ModelLoader(QThread):
+    finished = Signal(object)
+
+    def run(self):
+        # ここでモデルをロード
+        tokenizer = 'loaded_tokenizer'
+        model = 'loaded_model'
+        self.finished.emit({'tokenizer': tokenizer, 'model': model})

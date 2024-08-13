@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QLineEdit, QCheckBox, QComboBox, QProgressBar, QLabel,
                                QMessageBox, QTextEdit)
 from PySide6.QtCore import Qt
-from src.utils import Worker
+from src.utils import Worker, ModelLoader
 
 
 class Tab1Widget(QWidget):
@@ -43,7 +43,7 @@ class Tab1Widget(QWidget):
         layout.addWidget(self.dropdown)
 
         # Start/Cancel button
-        self.start_cancel_button = QPushButton('Start Process')
+        self.start_cancel_button = QPushButton('Waiting...')
         self.start_cancel_button.setMinimumHeight(50)
         self.start_cancel_button.clicked.connect(self.toggle_process)
         layout.addWidget(self.start_cancel_button)
@@ -68,6 +68,11 @@ class Tab1Widget(QWidget):
 
         self.worker = None
         self.is_processing = False
+        self.nlp_components = None
+
+        self.model_loader = ModelLoader()
+        self.model_loader.finished.connect(self.on_model_loaded)
+        self.load_model()
 
     def select_directory(self):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory')
@@ -87,14 +92,16 @@ class Tab1Widget(QWidget):
         if not self.url_input.text():
             QMessageBox.warning(self, 'Error', 'Please enter a URL.')
             return
-
+        if self.nlp_components is None:
+            QMessageBox.warning(self, '警告', 'モデルがロードされていません。')
+            return
         self.is_processing = True
         self.start_cancel_button.setText('Cancel')
         self.progress_bar.setValue(0)
         self.error_display.clear()
         self.error_display.setVisible(False)
 
-        self.worker = Worker(self.dir_input.text(), self.url_input.text())
+        self.worker = Worker(self.dir_input.text(), self.url_input.text(), self.nlp_components)
         self.worker.step_name.connect(self.update_step_name)
         self.worker.progress.connect(self.update_progress)
         self.worker.error.connect(self.display_error)
@@ -126,5 +133,14 @@ class Tab1Widget(QWidget):
         self.start_cancel_button.setEnabled(True)
         if self.progress_bar.value() == 100:
             QMessageBox.information(self, 'Success', 'Process completed successfully!')
-        elif not self.error_display.isVisible():
-            QMessageBox.information(self, 'Cancelled', 'Process has been cancelled.')
+
+    def load_model(self):
+        self.model_loader.start()
+        self.step_label.setText('モデルをロード中...')
+        self.start_cancel_button.setEnabled(False)
+
+    def on_model_loaded(self, nlp_components):
+        self.nlp_components = nlp_components
+        self.step_label.setText('モデルのロードが完了しました')
+        self.start_cancel_button.setEnabled(True)
+        self.start_cancel_button.setText('Start Process')
