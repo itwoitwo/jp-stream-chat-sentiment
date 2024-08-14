@@ -2,13 +2,16 @@ import os
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog,
                                QLineEdit, QCheckBox, QComboBox, QProgressBar, QLabel,
                                QMessageBox, QTextEdit)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTime, QTimer
 from src.utils import Worker, ModelLoader
+import torch
 
 
 class Tab1Widget(QWidget):
     def __init__(self):
         super().__init__()
+
+        # init UI
         layout = QVBoxLayout(self)
 
         # Directory selection
@@ -29,18 +32,34 @@ class Tab1Widget(QWidget):
         self.url_input.setPlaceholderText('Enter URL here')
         layout.addWidget(QLabel('URL:'))
         layout.addWidget(self.url_input)
+        layout.addSpacing(10)
+
+        cuda_label = 'GPU(CUDA)モードで実行されます。' if torch.cuda.is_available() else 'CPUモードで実行されます。'
+        cuda_link = QLabel('Nvidia GPU(RTX3060等)搭載PCの方はCUDA Toolkit12.1以上をインストールすることで高速化することが出来ます。→'
+                           '''<a href='https://developer.nvidia.com/cuda-12-1-1-download-archive'>CUDA download</a>''')
+        cuda_link.setOpenExternalLinks(True)
+        layout.addWidget(cuda_link)
+        layout.addWidget(QLabel(f"現在の状態:{cuda_label}"))
 
         # Checkbox
-        self.checkbox = QCheckBox('Optional Checkbox')
-        self.checkbox.setMinimumHeight(40)
-        layout.addWidget(self.checkbox)
+        self.checkbox_force_cpu = QCheckBox(f"強制的にCPUモードで実行(非推奨)")
+        self.checkbox_force_cpu.setMinimumHeight(40)
+        layout.addWidget(self.checkbox_force_cpu)
 
         # Dropdown
-        self.dropdown = QComboBox()
-        self.dropdown.setMinimumHeight(40)
-        self.dropdown.addItems(['Option 1', 'Option 2', 'Option 3'])
-        layout.addWidget(QLabel('Dropdown:'))
-        layout.addWidget(self.dropdown)
+        self.batch_size = QComboBox()
+        self.batch_size.setMinimumHeight(40)
+        self.batch_size.addItems(['1', '4', '16', '32', '64', '128', '256', '512'])
+        self.batch_size.setCurrentIndex(2)
+        layout.addWidget(QLabel('バッチサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。'))
+        layout.addWidget(self.batch_size)
+
+        self.token_size = QComboBox()
+        self.token_size.setMinimumHeight(40)
+        self.token_size.addItems(['16', '32', '64', '128', '256', '512'])
+        self.token_size.setCurrentIndex(2)
+        layout.addWidget(QLabel('トークンサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。'))
+        layout.addWidget(self.token_size)
 
         # Start/Cancel button
         self.start_cancel_button = QPushButton('Waiting...')
@@ -51,6 +70,10 @@ class Tab1Widget(QWidget):
         # Step name label
         self.step_label = QLabel('Ready')
         layout.addWidget(self.step_label)
+
+        # elapsed time label
+        self.time_label = QLabel('00:00:00', self)
+        layout.addWidget(self.time_label)
 
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -63,9 +86,9 @@ class Tab1Widget(QWidget):
         self.error_display.setMinimumHeight(100)
         self.error_display.setVisible(False)
         layout.addWidget(self.error_display)
-
         layout.addStretch()
 
+        # init worker
         self.worker = None
         self.is_processing = False
         self.nlp_components = None
@@ -73,6 +96,10 @@ class Tab1Widget(QWidget):
         self.model_loader = ModelLoader()
         self.model_loader.finished.connect(self.on_model_loaded)
         self.load_model()
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_time)
+        self.time = None
 
     def select_directory(self):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory')
@@ -101,11 +128,19 @@ class Tab1Widget(QWidget):
         self.error_display.clear()
         self.error_display.setVisible(False)
 
-        self.worker = Worker(self.dir_input.text(), self.url_input.text(), self.nlp_components)
+        self.worker = Worker(
+            self.dir_input.text(),
+            self.url_input.text(),
+            self.checkbox_force_cpu.isChecked(),
+            int(self.batch_size.currentText()),
+            int(self.token_size.currentText()),
+            self.nlp_components
+        )
         self.worker.step_name.connect(self.update_step_name)
         self.worker.progress.connect(self.update_progress)
         self.worker.error.connect(self.display_error)
         self.worker.finished.connect(self.process_finished)
+        self.timer_reset()
         self.worker.start()
 
     def cancel_process(self):
@@ -131,6 +166,8 @@ class Tab1Widget(QWidget):
         self.is_processing = False
         self.start_cancel_button.setText('Start Process')
         self.start_cancel_button.setEnabled(True)
+        torch.cuda.empty_cache()
+        self.timer.stop()
         if self.progress_bar.value() == 100:
             QMessageBox.information(self, 'Success', 'Process completed successfully!')
 
@@ -144,3 +181,12 @@ class Tab1Widget(QWidget):
         self.step_label.setText('モデルのロードが完了しました')
         self.start_cancel_button.setEnabled(True)
         self.start_cancel_button.setText('Start Process')
+
+    def update_time(self):
+        self.time = self.time.addSecs(1)
+        self.time_label.setText(self.time.toString('hh:mm:ss'))
+
+    def timer_reset(self):
+        self.time = QTime(0, 0, 0)
+        self.timer.start(1000)
+        self.time_label.setText('00:00:00')

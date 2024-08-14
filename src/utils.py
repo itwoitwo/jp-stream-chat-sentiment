@@ -8,6 +8,9 @@ import io
 import traceback
 from PySide6.QtCore import QThread, Signal
 from urllib.parse import urlparse, parse_qs
+import torch
+from torch.utils.data import DataLoader
+from datasets import Dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from constants import ErrorCode, ERROR_MESSAGE, EMOTION_NAMES, CHECKPOINT
 
@@ -75,12 +78,18 @@ class Worker(QThread):
     error = Signal(str)
     finished = Signal()
 
-    def __init__(self, directory, url, nlp_components):
+    def __init__(self, directory, url, force_cpu, batch_size, token_size, nlp_components):
         super().__init__()
         self.directory = directory
         self.url = url
         self.tokenizer = nlp_components['tokenizer']
         self.model = nlp_components['model']
+        self.batch_size = batch_size
+        self.token_size = token_size
+        if force_cpu:
+            self.device = torch.device('cpu')
+        else:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def run(self):
         try:
@@ -107,14 +116,17 @@ class Worker(QThread):
                 save_dataframe_with_metadata(output_path, metadata, df)
                 os.remove(json_path)
             else:
-                df, _ = read_csv_with_metadata(output_path)
-            self.process_step('Ready')
+                df, metadata = read_csv_with_metadata(output_path)
+
+            df['emotion'] = self.classify_emotions(df['chat'].tolist(), self.batch_size, self.token_size, self.device)
+            save_dataframe_with_metadata(output_path, metadata, df)
+            self.process_step('Complete!!')
             self.progress.emit(100)
         except Exception as e:
+            error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
             if isinstance(e, ProcessError):
                 if e.code == ErrorCode['CANCEL']:
-                    return
-            error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
+                    error_msg = ERROR_MESSAGE['CANCEL']
             self.error.emit(error_msg)
 
     def yt_dlp_hook(self, d):
@@ -135,6 +147,30 @@ class Worker(QThread):
         elif step_name == 'Processing data':
             if not os.path.exists(self.directory):
                 raise ProcessError(f'Directory not found: {self.directory}')
+
+    def classify_emotions(self, texts, batch_size, token_size, device):
+        self.model.to(device)
+        dataset = Dataset.from_dict({'text': texts})
+        dataset = dataset.map(
+            lambda x: self.tokenizer(x['text'], truncation=True, padding='max_length', max_length=token_size),
+            batched=True)
+        dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+        dataloader = DataLoader(dataset, batch_size=batch_size)
+
+        results = []
+        self.model.eval()
+        total_batches = len(dataloader)
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(dataloader):
+                self.process_step('感情分析の実行中...')
+                batch = {k: v.to(device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+                predictions = torch.argmax(outputs.logits, dim=-1)
+                results.extend([self.model.config.id2label[pred.item()] for pred in predictions])
+
+                progress = (batch_idx + 1) / total_batches * 100
+                self.progress.emit(progress)
+        return results
 
 
 def read_csv_with_metadata(file_path):
