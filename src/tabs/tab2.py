@@ -27,11 +27,11 @@ class Tab2Widget(QWidget):
 
         # Bin width slider
         slider_layout = QHBoxLayout()
-        self.bin_slider = QSlider(Qt.Horizontal)
+        self.bin_slider = QSlider(Qt.Orientation.Horizontal)
         self.bin_slider.setMinimum(1)
         self.bin_slider.setMaximum(10)
         self.bin_slider.setValue(1)
-        self.bin_slider.setTickPosition(QSlider.TicksBelow)
+        self.bin_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.bin_slider.setTickInterval(1)
         self.bin_slider.valueChanged.connect(self.update_plot)
         slider_layout.addWidget(QLabel('Bin Width (minutes):'))
@@ -42,7 +42,7 @@ class Tab2Widget(QWidget):
 
         # Plot area
         self.plot_widget = QWebEngineView()
-        self.plot_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.plot_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self.plot_widget, 1)
 
         self.df = None  # Store the DataFrame

@@ -137,7 +137,6 @@ class Worker(QThread):
 
     def process_step(self, step_name):
         self.step_name.emit(step_name)
-        print(f'Processing step: {step_name}')
         if self.isInterruptionRequested():
             raise ProcessError(ERROR_MESSAGE['CANCEL'], ErrorCode['CANCEL'])
 
