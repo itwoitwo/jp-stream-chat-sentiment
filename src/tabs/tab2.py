@@ -43,6 +43,7 @@ class Tab2Widget(QWidget):
         # Plot area
         self.plot_widget = QWebEngineView()
         self.plot_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.plot_widget.setHtml('')
         layout.addWidget(self.plot_widget, 1)
 
         self.df = None  # Store the DataFrame
