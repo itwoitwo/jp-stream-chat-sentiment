@@ -5,6 +5,8 @@ import pandas as pd
 import csv
 import os
 import io
+import requests
+import time
 import traceback
 from PySide6.QtCore import QThread, Signal
 from urllib.parse import urlparse, parse_qs
@@ -49,7 +51,7 @@ def json_to_df(path):
                     message_runs = item['liveChatTextMessageRenderer']['message']['runs']
                     if message_runs and 'text' in message_runs[0]:
                         chat = message_runs[0]['text']
-                        timestamp = int(l_json['replayChatItemAction']['videoOffsetTimeMsec']) / 1000
+                        timestamp = int(l_json['replayChatItemAction']['videoOffsetTimeMsec']) // 1000
                         chats.append(chat)
                         timestamps.append(timestamp)
                         minutes.append(int(timestamp // 60))
@@ -94,29 +96,36 @@ class Worker(QThread):
     def run(self):
         try:
             parsed_url = urlparse(self.url)
-            query_params = parse_qs(parsed_url.query)
-            output_path = f"{self.directory}/{query_params['v'][0]}.csv"
-            if not os.path.exists(output_path):
-                self.process_step('ダウンロードの準備中')
-                res = download_chats(self.url, self.directory, self.yt_dlp_hook)
-                self.process_step('csvファイルへの変換中')
-                title = res['title']
-                video_id = res['id']
-                timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
+            if 'youtube' in parsed_url.netloc:
+                query_params = parse_qs(parsed_url.query)
+                output_path = f"{self.directory}/{query_params['v'][0]}.csv"
+                if not os.path.exists(output_path):
+                    self.process_step('ダウンロードの準備中')
+                    res = download_chats(self.url, self.directory, self.yt_dlp_hook)
+                    self.process_step('csvファイルへの変換中')
+                    title = res['title']
+                    video_id = res['id']
+                    timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
 
-                json_path = f"{self.directory}/{video_id}.live_chat.json"
-                df = json_to_df(json_path)
+                    json_path = f"{self.directory}/{video_id}.live_chat.json"
+                    df = json_to_df(json_path)
 
-                metadata = {
-                    'title': title,
-                    'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
-                    'url': self.url,
-                    'id': video_id
-                }
-                save_dataframe_with_metadata(output_path, metadata, df)
-                os.remove(json_path)
+                    metadata = {
+                        'title': title,
+                        'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
+                        'url': self.url,
+                        'id': video_id
+                    }
+                    save_dataframe_with_metadata(output_path, metadata, df)
+                    os.remove(json_path)
+                else:
+                    df, metadata = read_csv_with_metadata(output_path)
+            elif 'twitch' in parsed_url.netloc:
+                video_id = parsed_url.path.split('/')[-1]
+                output_path = f"{self.directory}/{video_id}.csv"
+                df, metadata = download_twitch_chats(video_id, output_path)
             else:
-                df, metadata = read_csv_with_metadata(output_path)
+                raise ProcessError('YoutubeかTwitchのURLを入力してください')
 
             df['emotion'] = self.classify_emotions(df['chat'].tolist(), self.batch_size, self.token_size, self.device)
             save_dataframe_with_metadata(output_path, metadata, df)
@@ -199,3 +208,94 @@ class ModelLoader(QThread):
 
         tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT['TOKENIZER'], clean_up_tokenization_spaces=True)
         self.finished.emit({'tokenizer': tokenizer, 'model': model})
+
+
+def get_json_data(video_id, cursor):
+    loop_data = json.dumps([
+        {
+            "operationName": "VideoCommentsByOffsetOrCursor",
+            "variables": {
+                "videoID": video_id,
+                "cursor": cursor
+            },
+            "extensions": {
+                "persistedQuery": {
+                    "version": 1,
+                    "sha256Hash": "b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a"
+                }
+            }
+        }
+    ])
+    return loop_data
+
+
+def download_twitch_chats(video_id, output_path):
+    api_url = 'https://gql.twitch.tv/gql'
+    first_data = json.dumps([
+        {
+            "operationName": "VideoCommentsByOffsetOrCursor",
+            "variables": {
+                "videoID": video_id,
+                "contentOffsetSeconds": 0
+            },
+            "extensions": {
+                "persistedQuery": {
+                    "version": 1,
+                    "sha256Hash": "b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a"
+                }
+            }
+        }
+    ])
+
+    # 1回目のセッションスタート
+    session = requests.Session()
+    session.headers = {'Client-ID': 'kd1unb4b3q4t58fwlpcbzcbnm76a8fp', 'content-type': 'application/json'}
+
+    response = session.post(
+        api_url,
+        first_data,
+        timeout=10
+    )
+
+    response.raise_for_status()
+    data = response.json()
+
+    chats = []
+    seconds = []
+    minutes = []
+    for comment in data[0]['data']['video']['comments']['edges']:
+        chats.append(comment['node']['message']['fragments'][0]['text'])
+        timestamp = int(comment['node']['contentOffsetSeconds'])
+        seconds.append(timestamp)
+        minutes.append(timestamp // 60)
+
+    cursor = None
+    if data[0]['data']['video']['comments']['pageInfo']['hasNextPage']:
+        cursor = data[0]['data']['video']['comments']['edges'][-1]['cursor']
+        time.sleep(0.1)
+
+    # session loop
+    while cursor:
+        response = session.post(
+            api_url,
+            get_json_data(video_id, cursor),
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        for comment in data[0]['data']['video']['comments']['edges']:
+            chats.append(comment['node']['message']['fragments'][0]['text'])
+            timestamp = int(comment['node']['contentOffsetSeconds'])
+            seconds.append(timestamp)
+            minutes.append(timestamp // 60)
+
+        if data[0]['data']['video']['comments']['pageInfo']['hasNextPage']:
+            cursor = data[0]['data']['video']['comments']['edges'][-1]['cursor']
+            time.sleep(0.1)
+        else:
+            cursor = None
+
+    df = pd.DataFrame({'chat': chats, 'second': seconds, 'minute': minutes})
+    df.to_csv(output_path, index=False, quoting=csv.QUOTE_ALL, escapechar='\\', quotechar='"', encoding='utf-8')
+    return df, {}
