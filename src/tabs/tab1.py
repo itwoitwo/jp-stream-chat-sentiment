@@ -41,7 +41,12 @@ class Tab1Widget(QWidget):
         layout.addWidget(QLabel(f"現在の状態:{cuda_label}"))
 
         # Checkbox
-        self.checkbox_force_cpu = QCheckBox(f"強制的にCPUモードで実行(非推奨)")
+        self.checkbox_skip_analyze = QCheckBox('感情分析をスキップ(チャットのダウンロードのみ)')
+        self.checkbox_skip_analyze.checkStateChanged.connect(self.toggle_analyze)
+        self.checkbox_skip_analyze.setMinimumHeight(40)
+        layout.addWidget(self.checkbox_skip_analyze)
+
+        self.checkbox_force_cpu = QCheckBox('強制的にCPUモードで実行(非推奨)')
         self.checkbox_force_cpu.setMinimumHeight(40)
         layout.addWidget(self.checkbox_force_cpu)
 
@@ -50,14 +55,16 @@ class Tab1Widget(QWidget):
         self.batch_size.setMinimumHeight(40)
         self.batch_size.addItems(['1', '4', '16', '32', '64', '128', '256', '512'])
         self.batch_size.setCurrentIndex(2)
-        layout.addWidget(QLabel('バッチサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。'))
+        self.batch_size_label = QLabel('バッチサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。')
+        layout.addWidget(self.batch_size_label)
         layout.addWidget(self.batch_size)
 
         self.token_size = QComboBox()
         self.token_size.setMinimumHeight(40)
         self.token_size.addItems(['16', '32', '64', '128', '256', '512'])
         self.token_size.setCurrentIndex(2)
-        layout.addWidget(QLabel('トークンサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。'))
+        self.token_size_label = QLabel('トークンサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。')
+        layout.addWidget(self.token_size_label)
         layout.addWidget(self.token_size)
 
         # Start/Cancel button
@@ -132,6 +139,7 @@ class Tab1Widget(QWidget):
         self.worker = Worker(
             self.dir_input.text(),
             self.url_input.text(),
+            self.checkbox_skip_analyze.isChecked(),
             self.checkbox_force_cpu.isChecked(),
             int(self.batch_size.currentText()),
             int(self.token_size.currentText()),
@@ -192,3 +200,11 @@ class Tab1Widget(QWidget):
         self.time = QTime(0, 0, 0)
         self.timer.start(1000)
         self.time_label.setText('00:00:00')
+
+    def toggle_analyze(self, skip_analyze):
+        is_visible = skip_analyze == Qt.CheckState.Unchecked
+        self.token_size_label.setVisible(is_visible)
+        self.token_size.setVisible(is_visible)
+        self.batch_size_label.setVisible(is_visible)
+        self.batch_size.setVisible(is_visible)
+        self.checkbox_force_cpu.setVisible(is_visible)

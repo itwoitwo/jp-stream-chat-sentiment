@@ -80,10 +80,11 @@ class Worker(QThread):
     error = Signal(str)
     finished = Signal()
 
-    def __init__(self, directory, url, force_cpu, batch_size, token_size, nlp_components, store):
+    def __init__(self, directory, url, skip_analyze, force_cpu, batch_size, token_size, nlp_components, store):
         super().__init__()
         self.directory = directory
         self.url = url
+        self.skip_analyze = skip_analyze
         self.tokenizer = nlp_components['tokenizer']
         self.model = nlp_components['model']
         self.batch_size = batch_size
@@ -128,8 +129,11 @@ class Worker(QThread):
             else:
                 raise ProcessError('YoutubeかTwitchのURLを入力してください')
 
-            df['emotion'] = self.classify_emotions(df['chat'].tolist(), self.batch_size, self.token_size, self.device)
-            save_dataframe_with_metadata(output_path, metadata, df)
+            if not self.skip_analyze:
+                df['emotion'] = self.classify_emotions(
+                    df['chat'].tolist(), self.batch_size, self.token_size, self.device
+                )
+                save_dataframe_with_metadata(output_path, metadata, df)
             self.store.set_data({'df': df, 'metadata': metadata})
             self.process_step('Complete!!')
             self.progress.emit(100)

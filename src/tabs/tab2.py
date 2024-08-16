@@ -80,6 +80,8 @@ class Tab2Widget(QWidget):
         max_minutes = self.df['minute'].max()
 
         fig = go.Figure()
+        if 'emotion' not in self.df.columns:
+            self.df['emotion'] = '未分類'
         for emotion in self.df['emotion'].unique():
             emotion_data = self.df[self.df['emotion'] == emotion]
             fig.add_trace(go.Histogram(
