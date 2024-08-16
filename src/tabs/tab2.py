@@ -9,7 +9,7 @@ from src.constants import EMOTION_COLORS
 
 
 class Tab2Widget(QWidget):
-    def __init__(self):
+    def __init__(self, store):
         super().__init__()
         layout = QVBoxLayout(self)
 
@@ -46,6 +46,7 @@ class Tab2Widget(QWidget):
         self.plot_widget.setHtml('')
         layout.addWidget(self.plot_widget, 1)
 
+        self.store = store
         self.df = None  # Store the DataFrame
         self.metadata = None
 
@@ -100,3 +101,13 @@ class Tab2Widget(QWidget):
 
         # WebEngineViewにHTMLを設定
         self.plot_widget.setHtml(html)
+
+    def update_plot_from_store(self):
+        if self.df is not None:
+            return
+
+        data = self.store.get_data()
+        if data:
+            self.df = data.get('df', None)
+            self.metadata = data.get('metadata', None)
+            self.update_plot()

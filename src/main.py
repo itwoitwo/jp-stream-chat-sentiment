@@ -2,6 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget
 from src.tabs.tab1 import Tab1Widget
 from src.tabs.tab2 import Tab2Widget
+from src.utils import Store
 
 
 class MainWindow(QMainWindow):
@@ -9,6 +10,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('PySide6 Application')
         self.setGeometry(100, 100, 1000, 800)
+        self.store = Store()
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -19,15 +21,20 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(tab_widget)
 
         # Create and add Tab 1
-        tab1 = Tab1Widget()
+        tab1 = Tab1Widget(self.store)
         tab_widget.addTab(tab1, 'Tab 1')
 
         # Create and add Tab 2
-        tab2 = Tab2Widget()
-        tab_widget.addTab(tab2, 'Tab 2')
+        self.tab2 = Tab2Widget(self.store)
+        tab_widget.addTab(self.tab2, 'Tab 2')
+        tab_widget.currentChanged.connect(self.tab_changed)
 
         # Set larger font size for all widgets
         self.setStyleSheet('QWidget { font-size: 14px; }')
+
+    def tab_changed(self, index):
+        if index == 1:
+            self.tab2.update_plot_from_store()
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ import torch
 
 
 class Tab1Widget(QWidget):
-    def __init__(self):
+    def __init__(self, store):
         super().__init__()
 
         # init UI
@@ -100,6 +100,8 @@ class Tab1Widget(QWidget):
         self.timer.timeout.connect(self.update_time)
         self.time = None
 
+        self.store = store
+
     def select_directory(self):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory')
         if directory:
@@ -133,7 +135,8 @@ class Tab1Widget(QWidget):
             self.checkbox_force_cpu.isChecked(),
             int(self.batch_size.currentText()),
             int(self.token_size.currentText()),
-            self.nlp_components
+            self.nlp_components,
+            self.store
         )
         self.worker.step_name.connect(self.update_step_name)
         self.worker.progress.connect(self.update_progress)

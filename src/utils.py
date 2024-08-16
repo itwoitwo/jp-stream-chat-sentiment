@@ -80,7 +80,7 @@ class Worker(QThread):
     error = Signal(str)
     finished = Signal()
 
-    def __init__(self, directory, url, force_cpu, batch_size, token_size, nlp_components):
+    def __init__(self, directory, url, force_cpu, batch_size, token_size, nlp_components, store):
         super().__init__()
         self.directory = directory
         self.url = url
@@ -92,6 +92,7 @@ class Worker(QThread):
             self.device = torch.device('cpu')
         else:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.store = store
 
     def run(self):
         try:
@@ -129,6 +130,7 @@ class Worker(QThread):
 
             df['emotion'] = self.classify_emotions(df['chat'].tolist(), self.batch_size, self.token_size, self.device)
             save_dataframe_with_metadata(output_path, metadata, df)
+            self.store.set_data({'df': df, 'metadata': metadata})
             self.process_step('Complete!!')
             self.progress.emit(100)
         except Exception as e:
@@ -299,3 +301,14 @@ def download_twitch_chats(video_id, output_path):
     df = pd.DataFrame({'chat': chats, 'second': seconds, 'minute': minutes})
     df.to_csv(output_path, index=False, quoting=csv.QUOTE_ALL, escapechar='\\', quotechar='"', encoding='utf-8')
     return df, {}
+
+
+class Store:
+    def __init__(self):
+        self._data = None
+
+    def set_data(self, data):
+        self._data = data
+
+    def get_data(self):
+        return self._data
