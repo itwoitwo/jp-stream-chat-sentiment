@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog,
-                               QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider)
+                               QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider, QTextBrowser)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtCore import Qt
 import pandas as pd
@@ -24,6 +24,12 @@ class Tab2Widget(QWidget):
         csv_layout.addWidget(self.csv_input, 1)
         csv_layout.addWidget(csv_button)
         layout.addLayout(csv_layout)
+
+        # Metadata display
+        self.metadata_browser = QTextBrowser()
+        self.metadata_browser.setMaximumHeight(100)
+        self.metadata_browser.setVisible(False)
+        layout.addWidget(self.metadata_browser)
 
         # Bin width slider
         slider_layout = QHBoxLayout()
@@ -61,6 +67,7 @@ class Tab2Widget(QWidget):
             self.df, self.metadata = read_csv_with_metadata(file_name)
             self.df['second'] = pd.to_numeric(self.df['second'])
             self.update_plot()
+            self.update_metadata_display()
         except Exception as e:
             QMessageBox.critical(self, 'Error', f"Error loading or plotting CSV: {e}")
 
@@ -91,15 +98,11 @@ class Tab2Widget(QWidget):
             bargap=0.1
         )
 
-        # X軸のティックラベルをカスタマイズ
         tick_vals = list(range(0, int(max_minutes) + bin_width, bin_width))
         tick_text = [f'{i}分' for i in tick_vals[:-1]] + [f'{tick_vals[-1]}分~']
         fig.update_xaxes(tickvals=tick_vals, ticktext=tick_text)
 
-        # PlotlyのグラフをHTMLに変換
         html = fig.to_html(include_plotlyjs='cdn')
-
-        # WebEngineViewにHTMLを設定
         self.plot_widget.setHtml(html)
 
     def update_plot_from_store(self):
@@ -111,3 +114,18 @@ class Tab2Widget(QWidget):
             self.df = data.get('df', None)
             self.metadata = data.get('metadata', None)
             self.update_plot()
+            self.update_metadata_display()
+
+    def update_metadata_display(self):
+        if self.metadata:
+            html_content = f"""
+            <b>{self.metadata.get('title', 'N/A')}:</b><br>
+            放送日: {self.metadata.get('upload_at', 'N/A')}<br>
+            <b>URL:</b> <a href="{self.metadata.get('url', '#')}">{self.metadata.get('url', 'N/A')}</a>
+            """
+        else:
+            html_content = ''
+
+        self.metadata_browser.setHtml(html_content)
+        self.metadata_browser.setOpenExternalLinks(True)
+        self.metadata_browser.setVisible(True)
