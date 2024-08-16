@@ -143,7 +143,6 @@ class Worker(QThread):
             'title': title,
             'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
             'url': self.url,
-            'id': video_id
         }
         save_dataframe_with_metadata(self.save_path, metadata, df)
         os.remove(json_path)
@@ -302,7 +301,7 @@ def download_twitch_chats(video_id, output_path):
 
     df = pd.DataFrame({'chat': chats, 'second': seconds, 'minute': minutes})
     df.to_csv(output_path, index=False, quoting=csv.QUOTE_ALL, escapechar='\\', quotechar='"', encoding='utf-8')
-    return df, {}
+    return df, {'url': f"https://www.twitch.tv/videos/{video_id}"}
 
 
 class Store:
