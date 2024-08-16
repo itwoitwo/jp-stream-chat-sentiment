@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
 from PySide6.QtCore import Qt, QTime, QTimer
 from src.utils import Worker, ModelLoader
 import torch
+import os
 
 
 class Tab1Widget(QWidget):
@@ -15,13 +16,13 @@ class Tab1Widget(QWidget):
 
         # Directory selection
         dir_layout = QHBoxLayout()
-        self.dir_input = QLineEdit()
-        self.dir_input.setMinimumHeight(40)
-        dir_button = QPushButton('Select Directory')
+        self.save_file_input = QLineEdit()
+        self.save_file_input.setMinimumHeight(40)
+        dir_button = QPushButton('名前をつけてチャットを保存')
         dir_button.setMinimumHeight(40)
-        dir_button.clicked.connect(self.select_directory)
+        dir_button.clicked.connect(self.get_save_file)
         dir_layout.addWidget(QLabel('Directory:'))
-        dir_layout.addWidget(self.dir_input, 1)
+        dir_layout.addWidget(self.save_file_input, 1)
         dir_layout.addWidget(dir_button)
         layout.addLayout(dir_layout)
 
@@ -109,10 +110,10 @@ class Tab1Widget(QWidget):
 
         self.store = store
 
-    def select_directory(self):
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory')
-        if directory:
-            self.dir_input.setText(directory)
+    def get_save_file(self):
+        save_file, _ = QFileDialog.getSaveFileName(self, '名前をつけてチャットを保存', filter='csv(*.csv)')
+        if save_file:
+            self.save_file_input.setText(save_file)
 
     def toggle_process(self):
         if not self.is_processing:
@@ -121,12 +122,13 @@ class Tab1Widget(QWidget):
             self.cancel_process()
 
     def start_process(self):
-        if not self.dir_input.text():
-            QMessageBox.warning(self, 'Error', 'Please select a directory.')
+        if not self.save_file_input.text():
+            QMessageBox.warning(self, 'Error', '保存する場所を入力してください。')
             return
-        if not self.url_input.text():
-            QMessageBox.warning(self, 'Error', 'Please enter a URL.')
-            return
+        if not os.path.exists(self.save_file_input.text()):
+            if not self.url_input.text():
+                QMessageBox.warning(self, 'Error', 'URLを入力してください。')
+                return
         if self.nlp_components is None:
             QMessageBox.warning(self, '警告', 'モデルがロードされていません。')
             return
@@ -137,7 +139,7 @@ class Tab1Widget(QWidget):
         self.error_display.setVisible(False)
 
         self.worker = Worker(
-            self.dir_input.text(),
+            self.save_file_input.text(),
             self.url_input.text(),
             self.checkbox_skip_analyze.isChecked(),
             self.checkbox_force_cpu.isChecked(),

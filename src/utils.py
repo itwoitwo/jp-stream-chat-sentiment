@@ -9,7 +9,7 @@ import requests
 import time
 import traceback
 from PySide6.QtCore import QThread, Signal
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 import torch
 from torch.utils.data import DataLoader
 from datasets import Dataset
@@ -80,9 +80,9 @@ class Worker(QThread):
     error = Signal(str)
     finished = Signal()
 
-    def __init__(self, directory, url, skip_analyze, force_cpu, batch_size, token_size, nlp_components, store):
+    def __init__(self, save_path, url, skip_analyze, force_cpu, batch_size, token_size, nlp_components, store):
         super().__init__()
-        self.directory = directory
+        self.save_path = save_path
         self.url = url
         self.skip_analyze = skip_analyze
         self.tokenizer = nlp_components['tokenizer']
@@ -93,23 +93,27 @@ class Worker(QThread):
             self.device = torch.device('cpu')
         else:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
         self.store = store
+
+        self.skip_download = os.path.exists(save_path)
 
     def run(self):
         try:
             parsed_url = urlparse(self.url)
-            if 'youtube' in parsed_url.netloc:
-                query_params = parse_qs(parsed_url.query)
-                output_path = f"{self.directory}/{query_params['v'][0]}.csv"
-                if not os.path.exists(output_path):
+            directory = os.path.dirname(self.save_path)
+            if self.skip_download:
+                df, metadata = read_csv_with_metadata(self.save_path)
+            else:
+                if 'youtube' in parsed_url.netloc:
                     self.process_step('ダウンロードの準備中')
-                    res = download_chats(self.url, self.directory, self.yt_dlp_hook)
+                    res = download_chats(self.url, directory, self.yt_dlp_hook)
                     self.process_step('csvファイルへの変換中')
                     title = res['title']
                     video_id = res['id']
                     timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
 
-                    json_path = f"{self.directory}/{video_id}.live_chat.json"
+                    json_path = f"{directory}/{video_id}.live_chat.json"
                     df = json_to_df(json_path)
 
                     metadata = {
@@ -118,22 +122,19 @@ class Worker(QThread):
                         'url': self.url,
                         'id': video_id
                     }
-                    save_dataframe_with_metadata(output_path, metadata, df)
+                    save_dataframe_with_metadata(self.save_path, metadata, df)
                     os.remove(json_path)
+                elif 'twitch' in parsed_url.netloc:
+                    video_id = parsed_url.path.split('/')[-1]
+                    df, metadata = download_twitch_chats(video_id, self.save_path)
                 else:
-                    df, metadata = read_csv_with_metadata(output_path)
-            elif 'twitch' in parsed_url.netloc:
-                video_id = parsed_url.path.split('/')[-1]
-                output_path = f"{self.directory}/{video_id}.csv"
-                df, metadata = download_twitch_chats(video_id, output_path)
-            else:
-                raise ProcessError('YoutubeかTwitchのURLを入力してください')
+                    raise ProcessError('YoutubeかTwitchのURLを入力してください')
 
             if not self.skip_analyze:
                 df['emotion'] = self.classify_emotions(
                     df['chat'].tolist(), self.batch_size, self.token_size, self.device
                 )
-                save_dataframe_with_metadata(output_path, metadata, df)
+                save_dataframe_with_metadata(self.save_path, metadata, df)
             self.store.set_data({'df': df, 'metadata': metadata})
             self.process_step('Complete!!')
             self.progress.emit(100)
@@ -154,13 +155,6 @@ class Worker(QThread):
         self.step_name.emit(step_name)
         if self.isInterruptionRequested():
             raise ProcessError(ERROR_MESSAGE['CANCEL'], ErrorCode['CANCEL'])
-
-        if step_name == 'Downloading data':
-            if 'error' in self.url.lower():
-                raise ProcessError('Failed to download data from the provided URL.')
-        elif step_name == 'Processing data':
-            if not os.path.exists(self.directory):
-                raise ProcessError(f'Directory not found: {self.directory}')
 
     def classify_emotions(self, texts, batch_size, token_size, device):
         self.model.to(device)
