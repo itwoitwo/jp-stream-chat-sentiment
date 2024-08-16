@@ -121,13 +121,10 @@ class Tab2Widget(QWidget):
     def update_metadata_display(self):
         if self.metadata:
             html_content = f"""
-            <b>{self.metadata.get('title', 'N/A')}:</b><br>
+            <b>{self.metadata.get('title', 'Twitchでは放送タイトル等の情報が表示されません')}</b><br>
             放送日: {self.metadata.get('upload_at', 'N/A')}<br>
             <b>URL:</b> <a href="{self.metadata.get('url', '#')}">{self.metadata.get('url', 'N/A')}</a>
             """
-        else:
-            html_content = ''
-
-        self.metadata_browser.setHtml(html_content)
-        self.metadata_browser.setOpenExternalLinks(True)
-        self.metadata_browser.setVisible(True)
+            self.metadata_browser.setHtml(html_content)
+            self.metadata_browser.setOpenExternalLinks(True)
+            self.metadata_browser.setVisible(True)

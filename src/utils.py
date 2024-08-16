@@ -190,7 +190,10 @@ def read_csv_with_metadata(file_path):
         first_line = file.readline().strip()
         if first_line.startswith('# attrs:'):
             metadata = json.loads(first_line[8:])
-        csv_data = file.readlines()
+            csv_data = file.readlines()
+        else:
+            file.seek(0)
+            csv_data = file.readlines()
 
     df = pd.read_csv(io.StringIO(''.join(csv_data)), quotechar='"')
 
