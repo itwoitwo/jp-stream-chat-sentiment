@@ -101,29 +101,12 @@ class Worker(QThread):
     def run(self):
         try:
             parsed_url = urlparse(self.url)
-            directory = os.path.dirname(self.save_path)
             if self.skip_download:
                 df, metadata = read_csv_with_metadata(self.save_path)
             else:
+                self.process_step('ダウンロードの準備中')
                 if 'youtube' in parsed_url.netloc:
-                    self.process_step('ダウンロードの準備中')
-                    res = download_chats(self.url, directory, self.yt_dlp_hook)
-                    self.process_step('csvファイルへの変換中')
-                    title = res['title']
-                    video_id = res['id']
-                    timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
-
-                    json_path = f"{directory}/{video_id}.live_chat.json"
-                    df = json_to_df(json_path)
-
-                    metadata = {
-                        'title': title,
-                        'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
-                        'url': self.url,
-                        'id': video_id
-                    }
-                    save_dataframe_with_metadata(self.save_path, metadata, df)
-                    os.remove(json_path)
+                    df, metadata = self.download_youtube_chats()
                 elif 'twitch' in parsed_url.netloc:
                     video_id = parsed_url.path.split('/')[-1]
                     df, metadata = download_twitch_chats(video_id, self.save_path)
@@ -144,6 +127,27 @@ class Worker(QThread):
                 if e.code == ErrorCode['CANCEL']:
                     error_msg = ERROR_MESSAGE['CANCEL']
             self.error.emit(error_msg)
+
+    def download_youtube_chats(self):
+        directory = os.path.dirname(self.save_path)
+        res = download_chats(self.url, directory, self.yt_dlp_hook)
+        self.process_step('csvファイルへの変換中')
+        title = res['title']
+        video_id = res['id']
+        timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
+
+        json_path = f"{directory}/{video_id}.live_chat.json"
+        df = json_to_df(json_path)
+
+        metadata = {
+            'title': title,
+            'upload_at': timestamp.tz_convert('Asia/Tokyo').strftime("%Y/%m/%d/%H:%M"),
+            'url': self.url,
+            'id': video_id
+        }
+        save_dataframe_with_metadata(self.save_path, metadata, df)
+        os.remove(json_path)
+        return df, metadata
 
     def yt_dlp_hook(self, d):
         if self.isInterruptionRequested():

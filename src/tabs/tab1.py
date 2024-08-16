@@ -170,7 +170,7 @@ class Tab1Widget(QWidget):
 
     def display_error(self, error_msg):
         self.error_display.setVisible(True)
-        self.error_display.setTextColor(Qt.red)
+        self.error_display.setTextColor(Qt.GlobalColor.red)
         self.error_display.append(error_msg)
         self.process_finished()
 
