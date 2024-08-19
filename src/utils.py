@@ -8,7 +8,8 @@ import io
 import requests
 import time
 import traceback
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtWidgets import QLabel
 from urllib.parse import urlparse
 import torch
 from torch.utils.data import DataLoader
@@ -316,3 +317,29 @@ class Store:
 
     def get_data(self):
         return self._data
+
+
+class ClickableLabel(QLabel):
+    clicked = Signal()  # クリックされたときに発行するシグナルを定義
+
+    def __init__(self, text):
+        super().__init__(text)
+        self.setStyleSheet("""
+            ClickableLabel {
+                font-size: 20px;
+                border: 2px dashed #888888;
+                border-radius: 10px;
+                padding: 10px;
+                background-color: #f0f0f0;
+            }
+            ClickableLabel:hover {
+                background-color: #e0e0e0;
+                border-color: #666666;
+                cursor: pointer;  /* マウスカーソルを手の形に変更 */
+            }
+        """)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)

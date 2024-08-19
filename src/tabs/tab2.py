@@ -2,9 +2,10 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider, QTextBrowser)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import pandas as pd
 import plotly.graph_objects as go
-from src.utils import read_csv_with_metadata
+from src.utils import read_csv_with_metadata, ClickableLabel
 from src.constants import EMOTION_COLORS
 
 
@@ -13,16 +14,18 @@ class Tab2Widget(QWidget):
         super().__init__()
         layout = QVBoxLayout(self)
 
+        self.drag_drop_area = ClickableLabel('ドラッグ＆ドロップするか、クリックしてcsvファイルを選択してください')
+        self.drag_drop_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.drag_drop_area.setFixedHeight(100)
+        self.drag_drop_area.clicked.connect(self.select_csv)
+        layout.addWidget(self.drag_drop_area)
+
         # CSV file selection
         csv_layout = QHBoxLayout()
         self.csv_input = QLineEdit()
         self.csv_input.setMinimumHeight(40)
-        csv_button = QPushButton('Select CSV')
-        csv_button.setMinimumHeight(40)
-        csv_button.clicked.connect(self.select_csv)
         csv_layout.addWidget(QLabel('CSV File:'))
         csv_layout.addWidget(self.csv_input, 1)
-        csv_layout.addWidget(csv_button)
         layout.addLayout(csv_layout)
 
         # Metadata display
@@ -55,6 +58,20 @@ class Tab2Widget(QWidget):
         self.store = store
         self.df = None  # Store the DataFrame
         self.metadata = None
+
+        # Enable drag and drop
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        for file_path in files:
+            if file_path.lower().endswith('.csv'):
+                self.csv_input.setText(file_path)
+                self.load_and_plot_csv(file_path)
 
     def select_csv(self):
         file_name, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', '', 'CSV Files (*.csv)')
@@ -121,9 +138,29 @@ class Tab2Widget(QWidget):
     def update_metadata_display(self):
         if self.metadata:
             html_content = f"""
-            <b>{self.metadata.get('title', 'Twitchでは放送タイトル等の情報が表示されません')}</b><br>
-            放送日: {self.metadata.get('upload_at', 'N/A')}<br>
-            <b>URL:</b> <a href="{self.metadata.get('url', '#')}">{self.metadata.get('url', 'N/A')}</a>
+                <html>
+                <head>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        font-size: 16px;
+                        line-height: 1.4;
+                        color: #333;
+                    }}
+                    a {{
+                        color: #0066cc;
+                        text-decoration: none;
+                    }}
+                </style>
+                </head>
+                <body>
+                    <b>{self.metadata.get('title', 'Twitchでは放送タイトル等の情報が表示されません')}</b>
+                    <div class="info">放送日: {self.metadata.get('upload_at', 'N/A')}</div>
+                    <div class="info">
+                        URL: <a href="{self.metadata.get('url', '#')}">{self.metadata.get('url', 'N/A')}</a>
+                    </div>
+                </body>
+                </html>
             """
             self.metadata_browser.setHtml(html_content)
             self.metadata_browser.setOpenExternalLinks(True)
