@@ -110,7 +110,7 @@ class Worker(QThread):
                     df, metadata = self.download_youtube_chats()
                 elif 'twitch' in parsed_url.netloc:
                     video_id = parsed_url.path.split('/')[-1]
-                    df, metadata = download_twitch_chats(video_id, self.save_path)
+                    df, metadata = self.download_twitch_chats(video_id)
                 else:
                     raise ProcessError('YoutubeかTwitchのURLを入力してください')
 
@@ -154,6 +154,82 @@ class Worker(QThread):
             raise ProcessError(ERROR_MESSAGE['CANCEL'], ErrorCode['CANCEL'])
         if d['status'] == 'downloading':
             self.step_name.emit(f"チャットのダウンロード中: {d['_default_template']}")
+
+    def download_twitch_chats(self, video_id):
+        self.process_step(STEP_LABEL['DOWNLOAD_PREPARE'])
+        api_url = 'https://gql.twitch.tv/gql'
+        first_data = json.dumps([
+            {
+                "operationName": "VideoCommentsByOffsetOrCursor",
+                "variables": {
+                    "videoID": video_id,
+                    "contentOffsetSeconds": 0
+                },
+                "extensions": {
+                    "persistedQuery": {
+                        "version": 1,
+                        "sha256Hash": "b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a"
+                    }
+                }
+            }
+        ])
+
+        # 1回目のセッションスタート
+        session = requests.Session()
+        session.headers = {'Client-ID': 'kd1unb4b3q4t58fwlpcbzcbnm76a8fp', 'content-type': 'application/json'}
+
+        response = session.post(
+            api_url,
+            first_data,
+            timeout=10
+        )
+
+        response.raise_for_status()
+        data = response.json()
+
+        self.process_step(STEP_LABEL['DOWNLOADING'])
+
+        chats = []
+        seconds = []
+        minutes = []
+        for comment in data[0]['data']['video']['comments']['edges']:
+            chats.append(comment['node']['message']['fragments'][0]['text'])
+            timestamp = int(comment['node']['contentOffsetSeconds'])
+            seconds.append(timestamp)
+            minutes.append(timestamp // 60)
+
+        cursor = None
+        if data[0]['data']['video']['comments']['pageInfo']['hasNextPage']:
+            cursor = data[0]['data']['video']['comments']['edges'][-1]['cursor']
+            time.sleep(0.1)
+
+        # session loop
+        while cursor:
+            self.process_step(STEP_LABEL['DOWNLOADING'])
+            response = session.post(
+                api_url,
+                get_json_data(video_id, cursor),
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            for comment in data[0]['data']['video']['comments']['edges']:
+                chats.append(comment['node']['message']['fragments'][0]['text'])
+                timestamp = int(comment['node']['contentOffsetSeconds'])
+                seconds.append(timestamp)
+                minutes.append(timestamp // 60)
+
+            if data[0]['data']['video']['comments']['pageInfo']['hasNextPage']:
+                cursor = data[0]['data']['video']['comments']['edges'][-1]['cursor']
+                time.sleep(0.1)
+            else:
+                cursor = None
+
+        metadata = {'url': f"https://www.twitch.tv/videos/{video_id}"}
+        df = pd.DataFrame({'chat': chats, 'second': seconds, 'minute': minutes})
+        save_dataframe_with_metadata(self.save_path, metadata, df)
+        return df, metadata
 
     def process_step(self, step_name):
         self.step_name.emit(step_name)
@@ -234,78 +310,6 @@ def get_json_data(video_id, cursor):
         }
     ])
     return loop_data
-
-
-def download_twitch_chats(video_id, output_path):
-    api_url = 'https://gql.twitch.tv/gql'
-    first_data = json.dumps([
-        {
-            "operationName": "VideoCommentsByOffsetOrCursor",
-            "variables": {
-                "videoID": video_id,
-                "contentOffsetSeconds": 0
-            },
-            "extensions": {
-                "persistedQuery": {
-                    "version": 1,
-                    "sha256Hash": "b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a"
-                }
-            }
-        }
-    ])
-
-    # 1回目のセッションスタート
-    session = requests.Session()
-    session.headers = {'Client-ID': 'kd1unb4b3q4t58fwlpcbzcbnm76a8fp', 'content-type': 'application/json'}
-
-    response = session.post(
-        api_url,
-        first_data,
-        timeout=10
-    )
-
-    response.raise_for_status()
-    data = response.json()
-
-    chats = []
-    seconds = []
-    minutes = []
-    for comment in data[0]['data']['video']['comments']['edges']:
-        chats.append(comment['node']['message']['fragments'][0]['text'])
-        timestamp = int(comment['node']['contentOffsetSeconds'])
-        seconds.append(timestamp)
-        minutes.append(timestamp // 60)
-
-    cursor = None
-    if data[0]['data']['video']['comments']['pageInfo']['hasNextPage']:
-        cursor = data[0]['data']['video']['comments']['edges'][-1]['cursor']
-        time.sleep(0.1)
-
-    # session loop
-    while cursor:
-        response = session.post(
-            api_url,
-            get_json_data(video_id, cursor),
-            timeout=10
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        for comment in data[0]['data']['video']['comments']['edges']:
-            chats.append(comment['node']['message']['fragments'][0]['text'])
-            timestamp = int(comment['node']['contentOffsetSeconds'])
-            seconds.append(timestamp)
-            minutes.append(timestamp // 60)
-
-        if data[0]['data']['video']['comments']['pageInfo']['hasNextPage']:
-            cursor = data[0]['data']['video']['comments']['edges'][-1]['cursor']
-            time.sleep(0.1)
-        else:
-            cursor = None
-
-    df = pd.DataFrame({'chat': chats, 'second': seconds, 'minute': minutes})
-    df.to_csv(output_path, index=False, quoting=csv.QUOTE_ALL, escapechar='\\', quotechar='"', encoding='utf-8')
-    return df, {'url': f"https://www.twitch.tv/videos/{video_id}"}
 
 
 class Store:
