@@ -39,14 +39,15 @@ class Tab2Widget(QWidget):
         self.bin_slider = QSlider(Qt.Orientation.Horizontal)
         self.bin_slider.setMinimum(1)
         self.bin_slider.setMaximum(10)
-        self.bin_slider.setValue(1)
+        slider_init_val = 1
+        self.bin_slider.setValue(slider_init_val)
         self.bin_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.bin_slider.setTickInterval(1)
         self.bin_slider.valueChanged.connect(self.update_plot)
-        slider_layout.addWidget(QLabel('Bin Width (minutes):'))
-        slider_layout.addWidget(self.bin_slider)
-        self.bin_label = QLabel('1')
+        slider_layout.addWidget(QLabel('何分毎に集計するか調節:'))
+        self.bin_label = QLabel(f'{slider_init_val}分間')
         slider_layout.addWidget(self.bin_label)
+        slider_layout.addWidget(self.bin_slider)
         layout.addLayout(slider_layout)
 
         # Plot area
@@ -89,11 +90,11 @@ class Tab2Widget(QWidget):
             QMessageBox.critical(self, 'Error', f"Error loading or plotting CSV: {e}")
 
     def update_plot(self):
+        bin_width = self.bin_slider.value()
+        self.bin_label.setText(f'{bin_width}分間')
         if self.df is None:
             return
 
-        bin_width = self.bin_slider.value()
-        self.bin_label.setText(str(bin_width))
         max_minutes = self.df['minute'].max()
 
         fig = go.Figure()
