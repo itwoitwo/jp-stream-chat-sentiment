@@ -101,7 +101,7 @@ class Tab2Widget(QWidget):
         fig = go.Figure()
         if 'emotion' not in self.df.columns:
             self.df['emotion'] = '未分類'
-        for emotion in self.df['emotion'].unique():
+        for emotion in reversed(EMOTION_COLORS.keys()):
             emotion_data = self.df[self.df['emotion'] == emotion]
             fig.add_trace(go.Histogram(
                 x=emotion_data['minute'],
