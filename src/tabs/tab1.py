@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QMessageBox, QTextEdit)
 
 from src.constants import STEP_LABEL, BUTTON_LABEL
-from src.utils import Worker, ModelLoader
+from src.utils import Worker, ModelLoader, ClickableLineEdit
 
 
 class Tab1Widget(QWidget):
@@ -19,7 +19,7 @@ class Tab1Widget(QWidget):
 
         # Directory selection
         dir_layout = QHBoxLayout()
-        self.save_file_input = QLineEdit()
+        self.save_file_input = ClickableLineEdit(self.get_save_file)
         self.save_file_input.setMinimumHeight(40)
         dir_button = QPushButton('名前をつけてチャットを保存')
         dir_button.setMinimumHeight(40)

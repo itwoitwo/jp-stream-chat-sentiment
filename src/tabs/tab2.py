@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFileDialog,
                                QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider, QTextBrowser)
 
 from src.constants import EMOTION_COLORS
-from src.utils import read_csv_with_metadata, ClickableLabel
+from src.utils import read_csv_with_metadata, ClickableLabel, ClickableLineEdit
 
 
 class Tab2Widget(QWidget):
@@ -23,7 +23,7 @@ class Tab2Widget(QWidget):
 
         # CSV file selection
         csv_layout = QHBoxLayout()
-        self.csv_input = QLineEdit()
+        self.csv_input = ClickableLineEdit(self.select_csv)
         self.csv_input.setMinimumHeight(40)
         csv_layout.addWidget(QLabel('CSV File:'))
         csv_layout.addWidget(self.csv_input, 1)

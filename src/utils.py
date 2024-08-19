@@ -11,7 +11,7 @@ import pandas as pd
 import requests
 import torch
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import QLabel
+from PySide6.QtWidgets import QLabel, QLineEdit
 from datasets import Dataset
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -348,4 +348,15 @@ class ClickableLabel(QLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
+        super().mousePressEvent(event)
+
+
+class ClickableLineEdit(QLineEdit):
+    def __init__(self, on_click):
+        super().__init__()
+        self.on_click = on_click
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.on_click()
         super().mousePressEvent(event)
