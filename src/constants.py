@@ -25,8 +25,8 @@ EMOTION_COLORS = {
 }
 
 CHECKPOINT = {
-    'TOKENIZER': 'cl-tohoku/bert-base-japanese-whole-word-masking',
-    'MODEL': 'my_model/'
+    'TOKENIZER': 'tohoku-nlp/bert-base-japanese-v3',
+    'MODEL': 'iton/YTLive-JaBERT-Emotion-v1'
 }
 
 STEP_LABEL = {
