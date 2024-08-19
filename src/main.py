@@ -1,5 +1,6 @@
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget
+from PySide6.QtGui import QIcon
 from src.tabs.tab1 import Tab1Widget
 from src.tabs.tab2 import Tab2Widget
 from src.utils import Store
@@ -8,9 +9,10 @@ from src.utils import Store
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('PySide6 Application')
+        self.setWindowTitle('Archive Chat Downloader')
         self.setGeometry(100, 100, 1000, 800)
         self.store = Store()
+        self.setWindowIcon(QIcon('favicon.ico'))
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
