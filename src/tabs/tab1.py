@@ -24,28 +24,32 @@ class Tab1Widget(QWidget):
         self.save_file_input.setPlaceholderText(
             'ダウンロードしたチャットの保存先を入力（既存のファイルを選択した場合はそのファイルの感情分析を実行）'
         )
-        dir_button = QPushButton('名前をつけてチャットを保存')
-        dir_button.setMinimumHeight(40)
-        dir_button.clicked.connect(self.get_save_file)
-        dir_layout.addWidget(QLabel('保存先:'))
+        dir_label = QLabel('保存先:')
+        dir_label.setMinimumWidth(50)
+        dir_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        dir_layout.addWidget(dir_label)
         dir_layout.addWidget(self.save_file_input, 1)
-        dir_layout.addWidget(dir_button)
         layout.addLayout(dir_layout)
 
         # URL input
+        url_layout = QHBoxLayout()
         self.url_input = QLineEdit()
         self.url_input.setMinimumHeight(40)
         self.url_input.setPlaceholderText('YoutubeかTwitchのURLを入力（上で既存のファイルを選択している場合は不要）')
-        layout.addWidget(QLabel('URL:'))
-        layout.addWidget(self.url_input)
+        url_label = QLabel('URL:')
+        url_label.setMinimumWidth(50)
+        url_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        url_layout.addWidget(url_label)
+        url_layout.addWidget(self.url_input)
+        layout.addLayout(url_layout)
         layout.addSpacing(10)
 
-        cuda_label = 'GPU(CUDA)モードで実行されます。' if torch.cuda.is_available() else 'CPUモードで実行されます。'
+        cuda_label = 'GPU(CUDA)' if torch.cuda.is_available() else 'CPU'
         cuda_link = QLabel('Nvidia GPU(RTX3060等)搭載PCの方はCUDA Toolkit12.1以上をインストールすることで高速化することが出来ます。→'
                            '''<a href='https://developer.nvidia.com/cuda-12-1-1-download-archive'>CUDA download</a>''')
         cuda_link.setOpenExternalLinks(True)
         layout.addWidget(cuda_link)
-        layout.addWidget(QLabel(f"現在の状態:{cuda_label}"))
+        layout.addWidget(QLabel(f"現在の状態: <b>{cuda_label}</b>モードで実行されます。"))
 
         # Checkbox
         self.checkbox_skip_analyze = QCheckBox('感情分析をスキップ(チャットのダウンロードのみ)')
@@ -56,23 +60,29 @@ class Tab1Widget(QWidget):
         self.checkbox_force_cpu = QCheckBox('強制的にCPUモードで実行(非推奨)')
         self.checkbox_force_cpu.setMinimumHeight(40)
         layout.addWidget(self.checkbox_force_cpu)
+        layout.addSpacing(10)
 
         # Dropdown
         self.batch_size = QComboBox()
         self.batch_size.setMinimumHeight(40)
         self.batch_size.addItems(['1', '4', '16', '32', '64', '128', '256', '512'])
         self.batch_size.setCurrentIndex(2)
-        self.batch_size_label = QLabel('バッチサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。')
+        self.batch_size_label = QLabel('バッチサイズ: デフォルト推奨。メモリ不足の場合は小さい数値にする。')
         layout.addWidget(self.batch_size_label)
         layout.addWidget(self.batch_size)
+        layout.addSpacing(10)
 
         self.token_size = QComboBox()
         self.token_size.setMinimumHeight(40)
         self.token_size.addItems(['16', '32', '64', '128', '256', '512'])
         self.token_size.setCurrentIndex(2)
-        self.token_size_label = QLabel('トークンサイズ:デフォルト推奨。メモリ不足の場合は小さい数値にする。')
+        self.token_size_label = QLabel(
+            '読み込む文章の最大長(トークン数): デフォルト推奨。メモリ不足、高速化したい場合は小さい数値にする。'
+        )
         layout.addWidget(self.token_size_label)
         layout.addWidget(self.token_size)
+
+        layout.addSpacing(10)
 
         # Start/Cancel button
         self.start_cancel_button = StyledButton(BUTTON_LABEL['LOADING'])
@@ -91,6 +101,7 @@ class Tab1Widget(QWidget):
         # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setMinimumHeight(30)
+        self.progress_bar.setVisible(False)
         layout.addWidget(self.progress_bar)
 
         # Error display area
@@ -172,6 +183,7 @@ class Tab1Widget(QWidget):
         self.step_label.setText(step_name)
 
     def update_progress(self, value):
+        self.progress_bar.setVisible(True)
         self.progress_bar.setValue(value)
 
     def display_error(self, error_msg):

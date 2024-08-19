@@ -32,10 +32,11 @@ CHECKPOINT = {
 STEP_LABEL = {
     'MODEL_LOADING': 'モデルをロード中...',
     'MODEL_LOADED': 'モデルのロードが完了しました',
-    'DOWNLOAD_PREPARE': 'ダウンロードの準備中',
+    'DOWNLOAD_PREPARE': 'ダウンロードの準備中...',
     'DOWNLOADING': 'チャットのダウンロード中...',
     'COMPLETE': '完了！',
-    'CONVERTING_CSV': 'csvファイルへの変換中',
+    'CONVERTING_CSV': 'csvファイルへの変換中...',
+    'EMOTION_ANALYZE_PREPARE': '感情分析の準備中...',
     'EMOTION_ANALYZING': '感情分析の実行中...'
 }
 
@@ -45,3 +46,44 @@ BUTTON_LABEL = {
     'CANCEL': 'キャンセル',
     'CANCELING': 'キャンセル中...',
 }
+
+COMMON_STYLE = """
+            QWidget {
+                font-size: 16px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            QMainWindow {
+                background-color: #ffffff;
+            }
+            QCheckBox::indicator {
+            width: 20px;
+            height: 20px;
+            }
+            QTabWidget::pane { 
+                border-top: 1px solid #ddd;
+                top: -1px; 
+            }
+            QTabBar::tab {
+                padding: 12px 0px;
+                color: #777;
+                border: 1px solid #ccc;
+                border-bottom: none;
+                background: #f0f0f0;
+                min-width: 50%;
+                margin-top: 0;
+            }
+            QTabBar::tab:selected {
+                color: #333;
+                background: #ffffff;
+                border: 1px solid #ddd;
+                border-bottom: 1px solid #ffffff;
+                margin-top: 0;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #e0e0e0;
+            }
+            QTabWidget>QWidget>QWidget{
+                background: #ffffff;
+                border-top: 1px solid #ddd;
+            }
+        """

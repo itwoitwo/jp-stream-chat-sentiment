@@ -240,6 +240,7 @@ class Worker(QThread):
             raise ProcessError(ERROR_MESSAGE['CANCEL'], ErrorCode['CANCEL'])
 
     def classify_emotions(self, texts, batch_size, token_size, device):
+        self.process_step(STEP_LABEL['EMOTION_ANALYZE_PREPARE'])
         self.model.to(device)
         dataset = Dataset.from_dict({'text': texts})
         dataset = dataset.map(
