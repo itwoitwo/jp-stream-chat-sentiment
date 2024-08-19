@@ -26,3 +26,19 @@ CHECKPOINT = {
     'TOKENIZER': 'cl-tohoku/bert-base-japanese-whole-word-masking',
     'MODEL': 'my_model/'
 }
+
+STEP_LABEL = {
+    'MODEL_LOADING': 'モデルをロード中...',
+    'MODEL_LOADED': 'モデルのロードが完了しました',
+    'DOWNLOAD_PREPARE': 'ダウンロードの準備中',
+    'COMPLETE': '完了！',
+    'CONVERTING_CSV': 'csvファイルへの変換中',
+    'EMOTION_ANALYZING': '感情分析の実行中...'
+}
+
+BUTTON_LABEL = {
+    'START': 'Start',
+    'LOADING': 'Now Loading...',
+    'CANCEL': 'キャンセル',
+    'CANCELING': 'キャンセル中...',
+}

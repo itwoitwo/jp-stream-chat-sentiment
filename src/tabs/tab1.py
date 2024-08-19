@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QMessageBox, QTextEdit)
 from PySide6.QtCore import Qt, QTime, QTimer
 from src.utils import Worker, ModelLoader
+from src.constants import STEP_LABEL, BUTTON_LABEL
 import torch
 import os
 
@@ -21,7 +22,7 @@ class Tab1Widget(QWidget):
         dir_button = QPushButton('名前をつけてチャットを保存')
         dir_button.setMinimumHeight(40)
         dir_button.clicked.connect(self.get_save_file)
-        dir_layout.addWidget(QLabel('Directory:'))
+        dir_layout.addWidget(QLabel('保存先:'))
         dir_layout.addWidget(self.save_file_input, 1)
         dir_layout.addWidget(dir_button)
         layout.addLayout(dir_layout)
@@ -29,7 +30,7 @@ class Tab1Widget(QWidget):
         # URL input
         self.url_input = QLineEdit()
         self.url_input.setMinimumHeight(40)
-        self.url_input.setPlaceholderText('Enter URL here')
+        self.url_input.setPlaceholderText('YoutubeかTwitchのURLを入力')
         layout.addWidget(QLabel('URL:'))
         layout.addWidget(self.url_input)
         layout.addSpacing(10)
@@ -69,13 +70,13 @@ class Tab1Widget(QWidget):
         layout.addWidget(self.token_size)
 
         # Start/Cancel button
-        self.start_cancel_button = QPushButton('Waiting...')
+        self.start_cancel_button = QPushButton(BUTTON_LABEL['LOADING'])
         self.start_cancel_button.setMinimumHeight(50)
         self.start_cancel_button.clicked.connect(self.toggle_process)
         layout.addWidget(self.start_cancel_button)
 
         # Step name label
-        self.step_label = QLabel('Ready')
+        self.step_label = QLabel()
         layout.addWidget(self.step_label)
 
         # elapsed time label
@@ -123,17 +124,17 @@ class Tab1Widget(QWidget):
 
     def start_process(self):
         if not self.save_file_input.text():
-            QMessageBox.warning(self, 'Error', '保存する場所を入力してください。')
+            QMessageBox.warning(self, 'エラー', '保存する場所を入力してください。')
             return
         if not os.path.exists(self.save_file_input.text()):
             if not self.url_input.text():
-                QMessageBox.warning(self, 'Error', 'URLを入力してください。')
+                QMessageBox.warning(self, 'エラー', 'URLを入力してください。')
                 return
         if self.nlp_components is None:
             QMessageBox.warning(self, '警告', 'モデルがロードされていません。')
             return
         self.is_processing = True
-        self.start_cancel_button.setText('Cancel')
+        self.start_cancel_button.setText(BUTTON_LABEL['CANCEL'])
         self.progress_bar.setValue(0)
         self.error_display.clear()
         self.error_display.setVisible(False)
@@ -158,7 +159,7 @@ class Tab1Widget(QWidget):
     def cancel_process(self):
         if self.worker and self.worker.isRunning():
             self.worker.requestInterruption()
-            self.start_cancel_button.setText('Cancelling...')
+            self.start_cancel_button.setText(BUTTON_LABEL['CANCELING'])
             self.start_cancel_button.setEnabled(False)
             self.process_finished()
 
@@ -176,23 +177,23 @@ class Tab1Widget(QWidget):
 
     def process_finished(self):
         self.is_processing = False
-        self.start_cancel_button.setText('Start Process')
+        self.start_cancel_button.setText(BUTTON_LABEL['START'])
         self.start_cancel_button.setEnabled(True)
         torch.cuda.empty_cache()
         self.timer.stop()
         if self.progress_bar.value() == 100:
-            QMessageBox.information(self, 'Success', 'Process completed successfully!')
+            QMessageBox.information(self, 'Success', '処理が終わりました！')
 
     def load_model(self):
         self.model_loader.start()
-        self.step_label.setText('モデルをロード中...')
+        self.step_label.setText(STEP_LABEL['MODEL_LOADING'])
         self.start_cancel_button.setEnabled(False)
 
     def on_model_loaded(self, nlp_components):
         self.nlp_components = nlp_components
-        self.step_label.setText('モデルのロードが完了しました')
+        self.step_label.setText(STEP_LABEL['MODEL_LOADED'])
         self.start_cancel_button.setEnabled(True)
-        self.start_cancel_button.setText('Start Process')
+        self.start_cancel_button.setText(BUTTON_LABEL['START'])
 
     def update_time(self):
         self.time = self.time.addSecs(1)

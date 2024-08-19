@@ -15,7 +15,7 @@ import torch
 from torch.utils.data import DataLoader
 from datasets import Dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from constants import ErrorCode, ERROR_MESSAGE, EMOTION_NAMES, CHECKPOINT
+from constants import ErrorCode, ERROR_MESSAGE, EMOTION_NAMES, CHECKPOINT, STEP_LABEL
 
 
 def download_chats(url, path, hook):
@@ -105,7 +105,7 @@ class Worker(QThread):
             if self.skip_download:
                 df, metadata = read_csv_with_metadata(self.save_path)
             else:
-                self.process_step('ダウンロードの準備中')
+                self.process_step(STEP_LABEL['DOWNLOAD_PREPARE'])
                 if 'youtube' in parsed_url.netloc:
                     df, metadata = self.download_youtube_chats()
                 elif 'twitch' in parsed_url.netloc:
@@ -120,7 +120,7 @@ class Worker(QThread):
                 )
                 save_dataframe_with_metadata(self.save_path, metadata, df)
             self.store.set_data({'df': df, 'metadata': metadata})
-            self.process_step('Complete!!')
+            self.process_step(STEP_LABEL['COMPLETE'])
             self.progress.emit(100)
         except Exception as e:
             error_msg = f'エラーが発生しました: {str(e)}\n\n{traceback.format_exc()}'
@@ -132,7 +132,7 @@ class Worker(QThread):
     def download_youtube_chats(self):
         directory = os.path.dirname(self.save_path)
         res = download_chats(self.url, directory, self.yt_dlp_hook)
-        self.process_step('csvファイルへの変換中')
+        self.process_step(STEP_LABEL['CONVERTING_CSV'])
         title = res['title']
         video_id = res['id']
         timestamp = pd.to_datetime(res['timestamp'], unit='s', utc=True)
@@ -174,7 +174,7 @@ class Worker(QThread):
         total_batches = len(dataloader)
         with torch.no_grad():
             for batch_idx, batch in enumerate(dataloader):
-                self.process_step('感情分析の実行中...')
+                self.process_step(STEP_LABEL['EMOTION_ANALYZING'])
                 batch = {k: v.to(device) for k, v in batch.items()}
                 outputs = self.model(**batch)
                 predictions = torch.argmax(outputs.logits, dim=-1)
