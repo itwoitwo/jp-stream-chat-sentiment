@@ -21,6 +21,9 @@ class Tab1Widget(QWidget):
         dir_layout = QHBoxLayout()
         self.save_file_input = ClickableLineEdit(self.get_save_file)
         self.save_file_input.setMinimumHeight(40)
+        self.save_file_input.setPlaceholderText(
+            'ダウンロードしたチャットの保存先を入力（既存のファイルを選択した場合はそのファイルの感情分析を実行）'
+        )
         dir_button = QPushButton('名前をつけてチャットを保存')
         dir_button.setMinimumHeight(40)
         dir_button.clicked.connect(self.get_save_file)
@@ -32,7 +35,7 @@ class Tab1Widget(QWidget):
         # URL input
         self.url_input = QLineEdit()
         self.url_input.setMinimumHeight(40)
-        self.url_input.setPlaceholderText('YoutubeかTwitchのURLを入力')
+        self.url_input.setPlaceholderText('YoutubeかTwitchのURLを入力（上で既存のファイルを選択している場合は不要）')
         layout.addWidget(QLabel('URL:'))
         layout.addWidget(self.url_input)
         layout.addSpacing(10)
