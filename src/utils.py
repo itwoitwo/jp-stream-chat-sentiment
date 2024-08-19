@@ -11,7 +11,8 @@ import pandas as pd
 import requests
 import torch
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import QLabel, QLineEdit
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QGraphicsDropShadowEffect
+from PySide6.QtGui import QColor, QFont
 from datasets import Dataset
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -360,3 +361,69 @@ class ClickableLineEdit(QLineEdit):
         if event.button() == Qt.MouseButton.LeftButton:
             self.on_click()
         super().mousePressEvent(event)
+
+
+class StyledButton(QPushButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.setMinimumHeight(50)
+        self.setMinimumWidth(200)
+
+        # フォントの設定
+        font = QFont()
+        font.setFamily('Meiryo')  # 日本語フォント
+        font.setPointSize(12)
+        font.setBold(True)
+        self.setFont(font)
+
+        # ドロップシャドウ効果の追加
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        shadow.setOffset(0, 5)
+        self.setGraphicsEffect(shadow)
+
+        self.update_style()
+
+    def update_style(self):
+        if self.text() == 'Start':
+            bg_color = '#4CAF50'  # 緑色
+            hover_color = '#45a049'
+            pressed_color = "#3e8e41"
+        else:
+            bg_color = '#F44336'  # 赤色
+            hover_color = '#D32F2F'
+            pressed_color = '#C62828'
+
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {bg_color};
+                color: white;
+                border: none;
+                border-radius: 25px;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px 20px;
+            }}
+            QPushButton:hover {{
+                background-color: {hover_color};
+            }}
+            QPushButton:pressed {{
+                background-color: {pressed_color};
+            }}
+            QPushButton:disabled {{
+                background-color: #BDBDBD;
+                color: #757575;
+            }}
+        """)
+
+    def setText(self, text):
+        super().setText(text)
+        self.update_style()
+
+    def setEnabled(self, enabled):
+        super().setEnabled(enabled)
+        self.update_style()

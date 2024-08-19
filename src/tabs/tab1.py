@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QMessageBox, QTextEdit)
 
 from src.constants import STEP_LABEL, BUTTON_LABEL
-from src.utils import Worker, ModelLoader, ClickableLineEdit
+from src.utils import Worker, ModelLoader, ClickableLineEdit, StyledButton
 
 
 class Tab1Widget(QWidget):
@@ -72,10 +72,10 @@ class Tab1Widget(QWidget):
         layout.addWidget(self.token_size)
 
         # Start/Cancel button
-        self.start_cancel_button = QPushButton(BUTTON_LABEL['LOADING'])
+        self.start_cancel_button = StyledButton(BUTTON_LABEL['LOADING'])
         self.start_cancel_button.setMinimumHeight(50)
         self.start_cancel_button.clicked.connect(self.toggle_process)
-        layout.addWidget(self.start_cancel_button)
+        layout.addWidget(self.start_cancel_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Step name label
         self.step_label = QLabel()
