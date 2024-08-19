@@ -1,12 +1,13 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog,
-                               QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider, QTextBrowser)
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import pandas as pd
 import plotly.graph_objects as go
-from src.utils import read_csv_with_metadata, ClickableLabel
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFileDialog,
+                               QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider, QTextBrowser)
+
 from src.constants import EMOTION_COLORS
+from src.utils import read_csv_with_metadata, ClickableLabel
 
 
 class Tab2Widget(QWidget):

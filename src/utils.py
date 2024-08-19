@@ -1,20 +1,22 @@
-from yt_dlp import YoutubeDL
-from pathlib import Path
-import json
-import pandas as pd
 import csv
-import os
 import io
-import requests
+import json
+import os
 import time
 import traceback
+from pathlib import Path
+from urllib.parse import urlparse
+
+import pandas as pd
+import requests
+import torch
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import QLabel
-from urllib.parse import urlparse
-import torch
-from torch.utils.data import DataLoader
 from datasets import Dataset
+from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from yt_dlp import YoutubeDL
+
 from constants import ErrorCode, ERROR_MESSAGE, EMOTION_NAMES, CHECKPOINT, STEP_LABEL
 
 

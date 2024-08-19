@@ -1,11 +1,13 @@
+import os
+
+import torch
+from PySide6.QtCore import Qt, QTime, QTimer
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog,
                                QLineEdit, QCheckBox, QComboBox, QProgressBar, QLabel,
                                QMessageBox, QTextEdit)
-from PySide6.QtCore import Qt, QTime, QTimer
-from src.utils import Worker, ModelLoader
+
 from src.constants import STEP_LABEL, BUTTON_LABEL
-import torch
-import os
+from src.utils import Worker, ModelLoader
 
 
 class Tab1Widget(QWidget):
