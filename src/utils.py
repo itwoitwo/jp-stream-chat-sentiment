@@ -11,8 +11,8 @@ import pandas as pd
 import requests
 import torch
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QGraphicsDropShadowEffect
 from PySide6.QtGui import QColor, QFont
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QGraphicsDropShadowEffect
 from datasets import Dataset
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer

@@ -1,10 +1,12 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget
+
 from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget
+
+from src.constants import COMMON_STYLE
 from src.tabs.tab1 import Tab1Widget
 from src.tabs.tab2 import Tab2Widget
 from src.utils import Store
-from src.constants import COMMON_STYLE
 
 
 class MainWindow(QMainWindow):
