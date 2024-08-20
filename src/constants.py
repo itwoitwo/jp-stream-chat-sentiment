@@ -86,4 +86,12 @@ COMMON_STYLE = """
                 background: #ffffff;
                 border-top: 1px solid #ddd;
             }
+            QSpinBox {
+                padding-right: 15px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                width: 20px;
+            }
         """

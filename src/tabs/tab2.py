@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFileDialog,
-                               QLineEdit, QLabel, QMessageBox, QSizePolicy, QSlider, QTextBrowser)
+                               QLabel, QMessageBox, QSizePolicy, QSpinBox, QTextBrowser)
 
 from src.constants import EMOTION_COLORS
 from src.utils import read_csv_with_metadata, ClickableLabel, ClickableLineEdit
@@ -35,21 +35,18 @@ class Tab2Widget(QWidget):
         self.metadata_browser.setVisible(False)
         layout.addWidget(self.metadata_browser)
 
-        # Bin width slider
-        slider_layout = QHBoxLayout()
-        self.bin_slider = QSlider(Qt.Orientation.Horizontal)
-        self.bin_slider.setMinimum(1)
-        self.bin_slider.setMaximum(10)
-        slider_init_val = 1
-        self.bin_slider.setValue(slider_init_val)
-        self.bin_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.bin_slider.setTickInterval(1)
-        self.bin_slider.valueChanged.connect(self.update_plot)
-        slider_layout.addWidget(QLabel('何分毎に集計するか調節:'))
-        self.bin_label = QLabel(f'{slider_init_val}分間')
-        slider_layout.addWidget(self.bin_label)
-        slider_layout.addWidget(self.bin_slider)
-        layout.addLayout(slider_layout)
+        # Bin width spinbox
+        bin_width_layout = QHBoxLayout()
+        self.bin_spinbox = QSpinBox()
+        self.bin_spinbox.setMinimum(1)
+        self.bin_spinbox.setMaximum(60)
+        self.bin_spinbox.setValue(1)
+        self.bin_spinbox.setSuffix('分間')
+        self.bin_spinbox.valueChanged.connect(self.update_plot)
+        bin_width_layout.addWidget(QLabel('集計間隔:'))
+        bin_width_layout.addWidget(self.bin_spinbox)
+        bin_width_layout.addStretch(1)
+        layout.addLayout(bin_width_layout)
 
         # Plot area
         self.plot_widget = QWebEngineView()
@@ -91,8 +88,7 @@ class Tab2Widget(QWidget):
             QMessageBox.critical(self, 'Error', f"Error loading or plotting CSV: {e}")
 
     def update_plot(self):
-        bin_width = self.bin_slider.value()
-        self.bin_label.setText(f'{bin_width}分間')
+        bin_width = self.bin_spinbox.value()
         if self.df is None:
             return
 
