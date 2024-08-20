@@ -1,13 +1,15 @@
+import os
+
 import pandas as pd
 import plotly.graph_objects as go
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFileDialog,
-                               QLabel, QMessageBox, QSizePolicy, QSpinBox, QTextBrowser)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QProgressDialog,
+                               QLabel, QMessageBox, QSizePolicy, QSpinBox, QTextBrowser, QPushButton)
 
 from src.constants import EMOTION_COLORS
-from src.utils import read_csv_with_metadata, ClickableLabel, ClickableLineEdit
+from src.utils import read_csv_with_metadata, ClickableLabel, ClickableLineEdit, SavePlotThread
 
 
 class Tab2Widget(QWidget):
@@ -46,6 +48,11 @@ class Tab2Widget(QWidget):
         bin_width_layout.addWidget(QLabel('集計間隔:'))
         bin_width_layout.addWidget(self.bin_spinbox)
         bin_width_layout.addStretch(1)
+
+        # グラフ保存ボタンを追加
+        self.save_button = QPushButton('グラフを画像として保存')
+        self.save_button.clicked.connect(self.save_plot)
+        bin_width_layout.addWidget(self.save_button)
         layout.addLayout(bin_width_layout)
 
         # Plot area
@@ -58,6 +65,8 @@ class Tab2Widget(QWidget):
         self.store = store
         self.df = None  # Store the DataFrame
         self.metadata = None
+        self.fig = None
+        self.save_thread = None
 
         # Enable drag and drop
         self.setAcceptDrops(True)
@@ -146,6 +155,7 @@ class Tab2Widget(QWidget):
             fig.update_xaxes(tickvals=tick_vals, ticktext=tick_text, ticksuffix='分59秒')
         html = fig.to_html(include_plotlyjs='cdn')
         self.plot_widget.setHtml(html)
+        self.fig = fig
 
     def update_plot_from_store(self):
         if self.df is not None:
@@ -188,3 +198,37 @@ class Tab2Widget(QWidget):
             self.metadata_browser.setHtml(html_content)
             self.metadata_browser.setOpenExternalLinks(True)
             self.metadata_browser.setVisible(True)
+
+    def save_plot(self):
+        if self.fig is None:
+            QMessageBox.warning(self, '警告', 'グラフが作成されていません。')
+            return
+        read_file_path = self.csv_input.text()
+        file_name = os.path.splitext(read_file_path)[0]
+        file_name, _ = QFileDialog.getSaveFileName(self, 'グラフを保存', file_name, 'PNG Files (*.png)')
+        if file_name:
+            if not file_name.lower().endswith('.png'):
+                file_name += '.png'
+
+            # プログレスダイアログの設定
+            progress = QProgressDialog('グラフを保存中...', '閉じる', 0, 0, self)
+            progress.setWindowTitle('保存中')
+            progress.setWindowModality(Qt.WindowModality.WindowModal)
+            progress.setMinimumDuration(0)
+            progress.setValue(0)
+            progress.setRange(0, 0)  # 不定のプログレスバーを表示
+
+            # 保存処理をスレッドで実行
+            self.save_thread = SavePlotThread(self.fig, file_name)
+            self.save_thread.finished.connect(self.on_save_finished)
+            self.save_thread.finished.connect(progress.close)
+            self.save_thread.start()
+
+            # プログレスダイアログを表示
+            progress.exec()
+
+    def on_save_finished(self, success, message):
+        if success:
+            QMessageBox.information(self, '成功', message)
+        else:
+            QMessageBox.critical(self, 'エラー', message)

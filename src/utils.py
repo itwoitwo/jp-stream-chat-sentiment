@@ -428,3 +428,19 @@ class StyledButton(QPushButton):
     def setEnabled(self, enabled):
         super().setEnabled(enabled)
         self.update_style()
+
+
+class SavePlotThread(QThread):
+    finished = Signal(bool, str)
+
+    def __init__(self, fig, file_name):
+        super().__init__()
+        self.fig = fig
+        self.file_name = file_name
+
+    def run(self):
+        try:
+            self.fig.write_image(self.file_name)
+            self.finished.emit(True, 'グラフが正常に保存されました。')
+        except Exception as e:
+            self.finished.emit(False, f'グラフの保存中にエラーが発生しました: {e}')
