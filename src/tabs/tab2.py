@@ -158,15 +158,22 @@ class Tab2Widget(QWidget):
         self.fig = fig
 
     def update_plot_from_store(self):
-        if self.df is not None:
+        data = self.store.get_data()
+        if data is None:
             return
 
-        data = self.store.get_data()
-        if data:
-            self.df = data.get('df', None)
-            self.metadata = data.get('metadata', None)
-            self.update_plot()
-            self.update_metadata_display()
+        df = data.get('df')
+        if df is None:
+            return
+
+        if self.df is not None and self.df.equals(df):
+            return
+
+        self.df = df
+        self.metadata = data.get('metadata')
+        self.update_plot()
+        self.update_metadata_display()
+        self.csv_input.setText('ダウンロードタブで処理が完了した内容を表示しています')
 
     def update_metadata_display(self):
         if self.metadata:
