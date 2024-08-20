@@ -12,6 +12,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('Archive Chat Downloader')
         self.setBaseSize(1024, 768)
+        self.resize(1024, 768)
         self.store = Store()
         self.setWindowIcon(QIcon('favicon.ico'))
 

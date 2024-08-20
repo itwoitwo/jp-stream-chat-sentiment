@@ -17,7 +17,7 @@ class Tab2Widget(QWidget):
 
         self.drag_drop_area = ClickableLabel('ドラッグ＆ドロップするか、クリックしてcsvファイルを選択してください')
         self.drag_drop_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.drag_drop_area.setFixedHeight(100)
+        self.drag_drop_area.setFixedHeight(80)
         self.drag_drop_area.clicked.connect(self.select_csv)
         layout.addWidget(self.drag_drop_area)
 
@@ -31,7 +31,7 @@ class Tab2Widget(QWidget):
 
         # Metadata display
         self.metadata_browser = QTextBrowser()
-        self.metadata_browser.setMaximumHeight(100)
+        self.metadata_browser.setMaximumHeight(95)
         self.metadata_browser.setVisible(False)
         layout.addWidget(self.metadata_browser)
 
@@ -50,6 +50,7 @@ class Tab2Widget(QWidget):
 
         # Plot area
         self.plot_widget = QWebEngineView()
+        self.setMinimumHeight(700)
         self.plot_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.plot_widget.setHtml('')
         layout.addWidget(self.plot_widget, 1)
@@ -109,16 +110,40 @@ class Tab2Widget(QWidget):
 
         fig.update_layout(
             barmode='stack',
-            title='時間ごとのコメント数と感情分布',
+            title=None,
             xaxis_title='時間 (分)',
             yaxis_title='コメント数',
-            bargap=0.1
+            margin=dict(
+                l=50, r=50, t=30, b=50
+            ),
+            legend=dict(
+                font=dict(
+                    size=16
+                ),
+                itemclick='toggleothers',
+                itemdoubleclick='toggle'
+            ),
+            xaxis=dict(
+                rangeslider=dict(
+                    visible=True
+                ),
+                rangemode='nonnegative',
+            ),
+            yaxis=dict(
+                rangemode='nonnegative',
+            ),
+            modebar=dict(
+                remove=['toImage', 'select', 'lasso']
+            )
         )
 
-        tick_vals = list(range(0, int(max_minutes) + bin_width, bin_width))
-        tick_text = [f'{i}分' for i in tick_vals[:-1]] + [f'{tick_vals[-1]}分~']
-        fig.update_xaxes(tickvals=tick_vals, ticktext=tick_text)
-
+        if bin_width == 1:
+            fig.update_traces(hovertemplate='%{x} - %{x}59秒<br>%{y}')
+            fig.update_xaxes(dtick=5, ticksuffix='分')
+        else:
+            tick_vals = list(range(0, int(max_minutes) + bin_width, bin_width))
+            tick_text = [f'{i}分' for i in tick_vals]
+            fig.update_xaxes(tickvals=tick_vals, ticktext=tick_text, ticksuffix='分59秒')
         html = fig.to_html(include_plotlyjs='cdn')
         self.plot_widget.setHtml(html)
 
