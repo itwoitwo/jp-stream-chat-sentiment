@@ -140,8 +140,10 @@ class Tab1Widget(QWidget):
 
     def start_process(self):
         if not self.save_file_input.text():
-            QMessageBox.warning(self, 'エラー', '保存する場所を入力してください。')
-            return
+            self.get_save_file()
+            if not self.save_file_input.text():
+                QMessageBox.warning(self, 'エラー', '保存する場所を入力してください。')
+                return
         if not os.path.exists(self.save_file_input.text()):
             if not self.url_input.text():
                 QMessageBox.warning(self, 'エラー', 'URLを入力してください。')
