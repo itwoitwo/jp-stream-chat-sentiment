@@ -10,7 +10,17 @@ Youtube、Twitchのライブストリームのアーカイブからチャット�
 - Pyside6とplotlyによるGUI操作を実現
 - 単体でGoogle Colabで動作可能なファイルを同梱
 
+以下の例では、48分頃を観察すると全体のチャット件数が多いわけではないが、喜びのみを抜き出した場合にピークが確認できる。
+実際に動画の該当時間を確認するとプレイ中のゲームのエンディングを迎えたタイミングであった。
+![全体グラフ](https://github.com/user-attachments/assets/30bd3ebe-a9f0-47dd-823c-eb9d5e2466cf)
+![喜びグラフ](https://github.com/user-attachments/assets/6bd088df-ebb5-4073-a2c3-04b857d0e398)
+
 ## 始め方
+
+### Google Colab
+`for_google_colab.ipynb`をダウンロードし、Google Colab上で実行してください。
+
+### ローカルPCで動作させたい場合
 
 ### 必要条件
 
@@ -19,10 +29,8 @@ Python 3.8以上 (3.12で動作確認済)
 cuda 12.1以上 (GPUによる推論を行う場合のみ)
 ```
 
-### Google Colab
-`for_google_colab.ipynb`をダウンロードし、Google Colab上で実行してください。
+### 手順
 
-### インストール(ローカルPCで動作させたい場合)
 1. リポジトリをクローンします：
    ```
    $ git clone https://github.com/itwoitwo/jp-stream-chat-sentiment.git
@@ -48,6 +56,8 @@ cuda 12.1以上 (GPUによる推論を行う場合のみ)
     ```
 
 ## 注意事項
+* 感情分析モデルは約60％程度の精度です。
+* 1件1件の結果を見るのではなく、チャット全体の傾向を俯瞰して観察する目的で使用することを推奨します。
 * Youtube、TwitchのAPI仕様が変更された場合使用できなくなる場合があります。
 * Youtubeの場合は内部で[yt-dlp](https://github.com/yt-dlp/yt-dlp)を使用しているため、`$ pip install -U yt-dlp`で動作するかもしれません。
 
