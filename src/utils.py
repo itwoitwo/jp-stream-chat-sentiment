@@ -285,15 +285,8 @@ class ModelLoader(QThread):
     finished = Signal(object)
 
     def run(self):
-        num_labels = len(EMOTION_NAMES)
-        label2id = {label: i for i, label in enumerate(EMOTION_NAMES)}
-        id2label = {i: label for i, label in enumerate(EMOTION_NAMES)}
-
-        model = AutoModelForSequenceClassification.from_pretrained(CHECKPOINT['MODEL'], num_labels=num_labels)
-        model.config.id2label = id2label
-        model.config.label2id = label2id
-
         tokenizer = AutoTokenizer.from_pretrained(CHECKPOINT['TOKENIZER'], clean_up_tokenization_spaces=True)
+        model = AutoModelForSequenceClassification.from_pretrained(CHECKPOINT['MODEL'])
         self.finished.emit({'tokenizer': tokenizer, 'model': model})
 
 
